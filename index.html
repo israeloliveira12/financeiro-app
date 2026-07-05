@@ -48,6 +48,23 @@
   .nav button.active{background:var(--brand);color:#fff;font-weight:600;}
   .sidebar-foot{margin-top:auto;font-size:11px;color:#5F7167;padding:0 8px;line-height:1.5;}
 
+  .user-chip{display:flex;align-items:center;gap:9px;padding:8px;margin-top:16px;border-radius:10px;background:#1E2B25;}
+  .user-avatar,.user-avatar-fallback{width:30px;height:30px;border-radius:50%;flex-shrink:0;object-fit:cover;}
+  .user-avatar-fallback{background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+  .user-info{min-width:0;flex:1;}
+  .user-name{font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-email{font-size:10.5px;color:#7E9188;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-logout{all:unset;cursor:pointer;color:#7E9188;display:flex;flex-shrink:0;padding:4px;}
+  .user-logout:hover{color:#fff;}
+
+  .pw-wrap{position:relative;}
+  .pw-wrap input{padding-right:34px;}
+  .pw-toggle{all:unset;cursor:pointer;position:absolute;right:8px;top:50%;transform:translateY(-50%);color:var(--ink-soft);display:flex;}
+  .pw-toggle:hover{color:var(--brand);}
+  button.btn:disabled{opacity:.6;cursor:default;}
+  .auth-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--ink-soft);font-size:11.5px;}
+  .auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--line);}
+
   .main{flex:1;padding:28px 34px;max-width:1520px;overflow-y:auto;}
   .view{display:none;}
   .view.active{display:block;animation:fade .15s ease;}
@@ -200,6 +217,8 @@
     .nav{flex-direction:row;margin-top:0;gap:6px;}
     .nav button{white-space:nowrap;padding:9px 13px;}
     .sidebar-foot{display:none;}
+    .user-chip{margin:0 0 0 auto;background:transparent;padding:4px;}
+    .user-info{display:none;}
     .main{padding:18px 16px;}
     .cards{grid-template-columns:1fr 1fr;}
     .cols3{grid-template-columns:1fr;}
@@ -242,6 +261,15 @@
       <button data-view="compromissos">Compromissos fixos</button>
       <button data-view="cartoes">Cartões</button>
       <button data-view="backup">Backup dos dados</button>
+    </div>
+    <div class="user-chip" id="user-chip">
+      <img id="user-avatar" class="user-avatar" style="display:none;">
+      <div class="user-avatar-fallback" id="user-avatar-fallback"></div>
+      <div class="user-info">
+        <div class="user-name" id="user-name"></div>
+        <div class="user-email" id="user-email"></div>
+      </div>
+      <button class="user-logout" onclick="handleSignOut()" title="Sair"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
     </div>
     <div class="sidebar-foot">Dados sincronizados com a nuvem — acesse de qualquer aparelho fazendo login com o mesmo e-mail.<div id="sync-status" style="margin-top:8px;font-weight:600;color:#9FB0A8;"></div></div>
   </div>
@@ -524,7 +552,10 @@ const ICON = {
   manage: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
   chevronLeft: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
   chevronRight: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+  eye: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>',
+  eyeOff: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a17.6 17.6 0 0 1-3.06 4.14M6.53 6.53C3.63 8.36 1 12 1 12s4 8 11 8a9.7 9.7 0 0 0 5.47-1.53M9.5 9.5a3 3 0 0 0 4.24 4.24"/><path d="M1 1l22 22"/></svg>',
 };
+const GOOGLE_ICON = '<svg width="17" height="17" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.3 35 24 35c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.2-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.6 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4c-7.9 0-14.7 4.4-18.2 10.9z"/><path fill="#4CAF50" d="M24 44c5.4 0 10.3-2 14-5.4l-6.5-5.4C29.4 34.9 26.8 35.8 24 35.8c-5.2 0-9.7-3.5-11.3-8.3l-6.5 5C9.4 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.5 5.4C39.9 37 43 30.9 43 24c0-1.2-.1-2.4-.4-3.5z"/></svg>';
 
 /* ================= Utilidades ================= */
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -601,19 +632,33 @@ function showAuthGate(){
     <div class="modal-overlay" id="auth-gate">
       <div class="modal-box" style="max-width:360px;">
         <h3>Meu Financeiro</h3>
-        <p class="modal-sub">Entre com seu e-mail e senha para acessar seus dados de qualquer aparelho.</p>
+        <p class="modal-sub">Entre para acessar seus dados de qualquer aparelho.</p>
+        <button class="btn secondary" id="auth-google-btn" onclick="handleGoogleSignIn()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;">${GOOGLE_ICON} Entrar com Google</button>
+        <div class="auth-divider">ou por e-mail</div>
         <div class="entry-form" style="margin-top:0;flex-direction:column;align-items:stretch;">
           <div><label>E-mail</label><input type="email" id="auth-email" placeholder="voce@email.com" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="email"></div>
-          <div><label>Senha</label><input type="password" id="auth-password" placeholder="mínimo 6 caracteres" autocapitalize="none" autocorrect="off" autocomplete="current-password"></div>
+          <div><label>Senha</label>
+            <div class="pw-wrap">
+              <input type="password" id="auth-password" placeholder="mínimo 6 caracteres" autocapitalize="none" autocorrect="off" autocomplete="current-password">
+              <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('auth-password',this)">${ICON.eye}</button>
+            </div>
+          </div>
         </div>
         <p id="auth-error" class="small" style="display:none;margin-top:8px;"></p>
         <div class="modal-close-row" style="justify-content:space-between;">
-          <button class="btn secondary" onclick="handleSignUp()">Criar conta</button>
-          <button class="btn" onclick="handleSignIn()">Entrar</button>
+          <button class="btn secondary" id="auth-signup-btn" onclick="handleSignUp()">Criar conta</button>
+          <button class="btn" id="auth-signin-btn" onclick="handleSignIn()">Entrar</button>
         </div>
+        <p class="small" style="text-align:center;margin-top:14px;"><a href="#" onclick="handleForgotPassword();return false;" style="color:var(--ink-soft);">Esqueci minha senha</a></p>
       </div>
     </div>`;
   document.getElementById('modal-root').innerHTML = html;
+}
+function togglePasswordVisibility(inputId, btn){
+  const input = document.getElementById(inputId);
+  const isPw = input.type === 'password';
+  input.type = isPw ? 'text' : 'password';
+  btn.innerHTML = isPw ? ICON.eyeOff : ICON.eye;
 }
 function authMessage(text, isError){
   const el = document.getElementById('auth-error');
@@ -626,31 +671,112 @@ function validAuthInput(email, password){
   if(password.length < 6){ authMessage('A senha precisa ter no mínimo 6 caracteres.', true); return false; }
   return true;
 }
+async function withAuthButtonsDisabled(fn){
+  const ids = ['auth-signin-btn','auth-signup-btn','auth-google-btn'];
+  const btns = ids.map(id=>document.getElementById(id)).filter(Boolean);
+  if(btns.some(b=>b.disabled)) return; // já tem uma chamada em andamento, ignora clique duplicado
+  btns.forEach(b=>b.disabled = true);
+  try{ await fn(); } finally { btns.forEach(b=>{ if(document.body.contains(b)) b.disabled = false; }); }
+}
 async function handleSignIn(){
-  const email = document.getElementById('auth-email').value.trim().toLowerCase();
-  const password = document.getElementById('auth-password').value;
-  if(!validAuthInput(email,password)) return;
-  const { data, error } = await supa.auth.signInWithPassword({ email, password });
-  if(error){ authMessage('Não consegui entrar: ' + error.message, true); return; }
-  await onAuthenticated(data.session);
+  await withAuthButtonsDisabled(async () => {
+    const email = document.getElementById('auth-email').value.trim().toLowerCase();
+    const password = document.getElementById('auth-password').value;
+    if(!validAuthInput(email,password)) return;
+    const { data, error } = await supa.auth.signInWithPassword({ email, password });
+    if(error){ authMessage('Não consegui entrar: ' + error.message, true); return; }
+    await handleAuthEvent(data.session);
+  });
 }
 async function handleSignUp(){
+  await withAuthButtonsDisabled(async () => {
+    const email = document.getElementById('auth-email').value.trim().toLowerCase();
+    const password = document.getElementById('auth-password').value;
+    if(!validAuthInput(email,password)) return;
+    const { data, error } = await supa.auth.signUp({ email, password });
+    if(error){ authMessage('Não consegui criar a conta: ' + error.message, true); return; }
+    if(!data.session){ authMessage('Conta criada! Confirme seu e-mail (verifique a caixa de entrada) e depois clique em "Entrar".', false); return; }
+    await handleAuthEvent(data.session);
+  });
+}
+async function handleGoogleSignIn(){
+  await withAuthButtonsDisabled(async () => {
+    const { error } = await supa.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+    if(error) authMessage('Não consegui abrir o login do Google: ' + error.message, true);
+  });
+}
+async function handleForgotPassword(){
   const email = document.getElementById('auth-email').value.trim().toLowerCase();
-  const password = document.getElementById('auth-password').value;
-  if(!validAuthInput(email,password)) return;
-  const { data, error } = await supa.auth.signUp({ email, password });
-  if(error){ authMessage('Não consegui criar a conta: ' + error.message, true); return; }
-  if(!data.session){ authMessage('Conta criada! Confirme seu e-mail (verifique a caixa de entrada) e depois clique em "Entrar".', false); return; }
-  await onAuthenticated(data.session);
+  if(!email){ authMessage('Digite seu e-mail acima e depois clique em "Esqueci minha senha".', true); return; }
+  const { error } = await supa.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+  if(error){ authMessage('Não consegui enviar o e-mail: ' + error.message, true); return; }
+  authMessage('Enviamos um e-mail com um link para redefinir sua senha.', false);
+}
+function showResetPasswordModal(){
+  document.querySelector('.app').style.display = 'none';
+  const html = `
+    <div class="modal-overlay">
+      <div class="modal-box" style="max-width:360px;">
+        <h3>Definir nova senha</h3>
+        <p class="modal-sub">Escolha uma nova senha para a sua conta.</p>
+        <div class="pw-wrap">
+          <input type="password" id="reset-password" placeholder="nova senha (mín. 6 caracteres)" autocapitalize="none" autocorrect="off">
+          <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('reset-password',this)">${ICON.eye}</button>
+        </div>
+        <p id="reset-error" class="small" style="display:none;margin-top:8px;color:var(--bad);"></p>
+        <div class="modal-close-row"><button class="btn" id="reset-submit-btn" onclick="submitNewPassword()">Salvar nova senha</button></div>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+}
+async function submitNewPassword(){
+  const btn = document.getElementById('reset-submit-btn');
+  const errEl = document.getElementById('reset-error');
+  const password = document.getElementById('reset-password').value;
+  if(password.length < 6){ errEl.textContent = 'A senha precisa ter no mínimo 6 caracteres.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true;
+  try{
+    const { error } = await supa.auth.updateUser({ password });
+    if(error){ errEl.textContent = 'Não consegui salvar: ' + error.message; errEl.style.display = 'block'; return; }
+    const { data:{ session } } = await supa.auth.getSession();
+    await handleAuthEvent(session);
+  } finally { if(document.body.contains(btn)) btn.disabled = false; }
 }
 function handleSignOut(){
   supa.auth.signOut();
   location.reload();
 }
+function renderUserChip(){
+  if(!currentSession) return;
+  const meta = currentSession.user.user_metadata || {};
+  const name = meta.full_name || meta.name || currentSession.user.email;
+  const avatar = meta.avatar_url || meta.picture;
+  document.getElementById('user-name').textContent = name;
+  document.getElementById('user-email').textContent = currentSession.user.email;
+  const img = document.getElementById('user-avatar');
+  const fallback = document.getElementById('user-avatar-fallback');
+  if(avatar){
+    img.src = avatar; img.style.display = 'block'; fallback.style.display = 'none';
+  } else {
+    img.style.display = 'none'; fallback.style.display = 'flex';
+    fallback.textContent = (name||'?').trim().charAt(0).toUpperCase();
+  }
+}
+let authHandled = false;
+async function handleAuthEvent(session){
+  if(!session){
+    if(!authHandled){ authHandled = true; showAuthGate(); }
+    return;
+  }
+  if(authHandled && currentSession && currentSession.user.id === session.user.id) return; // já tratado, evita corrida
+  authHandled = true;
+  await onAuthenticated(session);
+}
 async function onAuthenticated(session){
   currentSession = session;
   document.getElementById('modal-root').innerHTML = '';
   document.querySelector('.app').style.display = '';
+  renderUserChip();
 
   const localState = loadLocalState();
   let cloudState = null;
@@ -1727,14 +1853,15 @@ function bootUI(){
   renderAll();
 }
 
+supa.auth.onAuthStateChange((event, session) => {
+  if(event === 'SIGNED_OUT'){ location.reload(); return; }
+  if(event === 'PASSWORD_RECOVERY'){ showResetPasswordModal(); return; }
+  handleAuthEvent(session);
+});
 (async function boot(){
   const { data:{ session } } = await supa.auth.getSession();
-  if(session) await onAuthenticated(session);
-  else showAuthGate();
+  await handleAuthEvent(session);
 })();
-supa.auth.onAuthStateChange((event) => {
-  if(event === 'SIGNED_OUT') location.reload();
-});
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
