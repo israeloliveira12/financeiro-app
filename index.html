@@ -565,8 +565,8 @@ function save(){
 }
 
 /* ================= Supabase (sincronização entre aparelhos) ================= */
-const SUPABASE_URL = 'COLE_AQUI_A_PROJECT_URL';
-const SUPABASE_ANON_KEY = 'COLE_AQUI_A_ANON_PUBLIC_KEY';
+const SUPABASE_URL = 'https://requjwthyczhwrelmpmx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJlcXVqd3RoeWN6aHdyZWxtcG14Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMyNTA1NjUsImV4cCI6MjA5ODgyNjU2NX0._Z9xhE23kMgrPWMzj5C6ET5okuHciEpv0MLa5AUPO68';
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentSession = null;
 let syncTimer = null;
