@@ -603,8 +603,8 @@ function showAuthGate(){
         <h3>Meu Financeiro</h3>
         <p class="modal-sub">Entre com seu e-mail e senha para acessar seus dados de qualquer aparelho.</p>
         <div class="entry-form" style="margin-top:0;flex-direction:column;align-items:stretch;">
-          <div><label>E-mail</label><input type="email" id="auth-email" placeholder="voce@email.com"></div>
-          <div><label>Senha</label><input type="password" id="auth-password" placeholder="mínimo 6 caracteres"></div>
+          <div><label>E-mail</label><input type="email" id="auth-email" placeholder="voce@email.com" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="email"></div>
+          <div><label>Senha</label><input type="password" id="auth-password" placeholder="mínimo 6 caracteres" autocapitalize="none" autocorrect="off" autocomplete="current-password"></div>
         </div>
         <p id="auth-error" class="small" style="display:none;margin-top:8px;"></p>
         <div class="modal-close-row" style="justify-content:space-between;">
@@ -627,7 +627,7 @@ function validAuthInput(email, password){
   return true;
 }
 async function handleSignIn(){
-  const email = document.getElementById('auth-email').value.trim();
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
   const password = document.getElementById('auth-password').value;
   if(!validAuthInput(email,password)) return;
   const { data, error } = await supa.auth.signInWithPassword({ email, password });
@@ -635,7 +635,7 @@ async function handleSignIn(){
   await onAuthenticated(data.session);
 }
 async function handleSignUp(){
-  const email = document.getElementById('auth-email').value.trim();
+  const email = document.getElementById('auth-email').value.trim().toLowerCase();
   const password = document.getElementById('auth-password').value;
   if(!validAuthInput(email,password)) return;
   const { data, error } = await supa.auth.signUp({ email, password });
