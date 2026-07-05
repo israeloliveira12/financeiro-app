@@ -260,7 +260,7 @@
       <button data-view="mes">Mês a mês</button>
       <button data-view="compromissos">Compromissos fixos</button>
       <button data-view="cartoes">Cartões</button>
-      <button data-view="backup">Backup dos dados</button>
+      <button data-view="backup">Configurações</button>
     </div>
     <div class="user-chip" id="user-chip">
       <img id="user-avatar" class="user-avatar" style="display:none;">
@@ -490,8 +490,8 @@
 
     <!-- BACKUP -->
     <div class="view" id="view-backup">
-      <h1>Backup dos dados</h1>
-      <p class="subtitle">Seus dados ficam sincronizados na nuvem — mas vale exportar um arquivo de backup de vez em quando como segurança extra.</p>
+      <h1>Configurações</h1>
+      <p class="subtitle">Sua conta, backup e sincronização dos dados. Seus dados ficam salvos na nuvem — mas vale exportar um arquivo de backup de vez em quando como segurança extra.</p>
 
       <div class="panel">
         <h2>Sua conta</h2>
@@ -524,7 +524,6 @@
           <label class="btn secondary" style="cursor:pointer;">Importar backup
             <input type="file" accept=".json" style="display:none" onchange="importBackup(event)">
           </label>
-          <button class="btn danger" onclick="resetAll()">Apagar tudo e recomeçar</button>
         </div>
       </div>
 
@@ -533,6 +532,19 @@
         <div class="kv"><span>Meses cadastrados</span><span id="info-months"></span></div>
         <div class="kv"><span>Compromissos ativos</span><span id="info-commits"></span></div>
         <div class="kv"><span>Cartões cadastrados</span><span id="info-cards"></span></div>
+      </div>
+
+      <div class="panel">
+        <h2>Zona de risco</h2>
+        <p class="panel-hint">Ações permanentes — não têm "desfazer".</p>
+        <div class="kv">
+          <span>Apaga todos os lançamentos, compromissos e cartões (nuvem e local), mas mantém seu login — você continua podendo entrar com o mesmo e-mail, do zero.</span>
+          <button class="btn danger" onclick="resetAll()" style="flex-shrink:0;">Apagar todos os meus dados</button>
+        </div>
+        <div class="kv">
+          <span>Exclui sua conta de login inteira e todos os dados associados a ela, de forma permanente. O e-mail fica livre pra criar uma conta nova depois.</span>
+          <button class="btn danger" id="delete-account-btn" onclick="handleDeleteAccount()" style="flex-shrink:0;">Excluir minha conta</button>
+        </div>
       </div>
     </div>
 
@@ -581,17 +593,21 @@ let currentYear = keyParts(todayKey()).y;
 function defaultState(){
   return { meta:{startingBalance:0}, cards:[], commitments:[], months:{}, projections:{} };
 }
+function localKey(){
+  // Cada conta tem sua própria chave no localStorage — evita que um aparelho
+  // compartilhado misture o cache local de duas contas diferentes.
+  return currentSession ? STORAGE_KEY + '_' + currentSession.user.id : STORAGE_KEY;
+}
 function loadLocalState(){
   try{
-    let raw = localStorage.getItem(STORAGE_KEY);
-    if(!raw) raw = localStorage.getItem(OLD_STORAGE_KEY); // migração automática da v1
+    const raw = localStorage.getItem(localKey());
     if(!raw) return null;
     return Object.assign(defaultState(), JSON.parse(raw));
   }catch(e){ return null; }
 }
 function save(){
   state.meta.lastModified = Date.now();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(localKey(), JSON.stringify(state));
   scheduleCloudSync();
 }
 
@@ -742,8 +758,8 @@ async function submitNewPassword(){
     await handleAuthEvent(session);
   } finally { if(document.body.contains(btn)) btn.disabled = false; }
 }
-function handleSignOut(){
-  supa.auth.signOut();
+async function handleSignOut(){
+  await supa.auth.signOut();
   location.reload();
 }
 function renderUserChip(){
@@ -792,7 +808,7 @@ async function onAuthenticated(session){
   else if(localState) state = localState;
   else state = defaultState();
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(localKey(), JSON.stringify(state));
   if(localTs > cloudTs) scheduleCloudSync(); // garante que a nuvem fique com a versão mais nova
 
   bootUI();
@@ -1797,9 +1813,32 @@ function importBackup(ev){
   ev.target.value = '';
 }
 function resetAll(){
-  if(!confirm('Isso vai apagar TODOS os dados salvos neste navegador. Tem certeza?')) return;
+  if(!confirm('Isso vai apagar TODOS os dados salvos — neste navegador e na nuvem. Sua conta de login continua existindo. Tem certeza?')) return;
   state = defaultState();
   save(); renderAll();
+}
+async function handleDeleteAccount(){
+  if(!currentSession) return;
+  if(!confirm('Isso vai excluir sua conta de login e TODOS os dados financeiros associados a ela, de forma PERMANENTE e IRREVERSÍVEL — inclusive na nuvem. Tem certeza que quer continuar?')) return;
+  const btn = document.getElementById('delete-account-btn');
+  btn.disabled = true;
+  try{
+    const res = await fetch('/api/delete-account', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + currentSession.access_token }
+    });
+    const body = await res.json().catch(()=>({}));
+    if(!res.ok){ alert('Não consegui excluir sua conta: ' + (body.error || 'erro desconhecido')); return; }
+    localStorage.removeItem(localKey());
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(OLD_STORAGE_KEY);
+    await supa.auth.signOut();
+    location.reload();
+  }catch(e){
+    alert('Não consegui excluir sua conta (verifique sua conexão) e tente novamente.');
+  } finally {
+    if(document.body.contains(btn)) btn.disabled = false;
+  }
 }
 function renderBackupInfo(){
   document.getElementById('saldo-inicial').value = state.meta.startingBalance || 0;

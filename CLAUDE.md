@@ -11,6 +11,7 @@ Este arquivo existe para dar contexto rápido em qualquer sessão nova do Claude
 - `sw.js` — service worker, cache básico para uso offline
 - `icon-192.png`, `icon-512.png` — ícones do PWA
 - `supabase/schema.sql` — script pra rodar uma vez no SQL Editor do Supabase (cria a tabela `financeiro_state` e as políticas de Row Level Security)
+- `api/delete-account.js` — function serverless do Vercel (Node, sem dependências) que exclui a conta de login do usuário via Supabase Admin API, usando a `SUPABASE_SERVICE_ROLE_KEY` (variável de ambiente só no Vercel, nunca no cliente)
 
 ## Sincronização entre aparelhos (Supabase)
 
@@ -20,10 +21,12 @@ Este arquivo existe para dar contexto rápido em qualquer sessão nova do Claude
 - **Perfil do usuário**: chip fixo no topo da sidebar (`#user-chip`) com avatar/nome/e-mail e botão de sair sempre visível — `renderUserChip()`, chamada de dentro de `onAuthenticated()`.
 - **Armazenamento**: uma linha por usuário na tabela `financeiro_state` (`user_id`, `data jsonb`, `updated_at`), protegida por RLS (`auth.uid() = user_id`) — só o próprio dono lê/escreve os dados dele.
 - **`localStorage` continua existindo** como cache local/offline-first: `save()` grava local na hora (interface não trava) e agenda (`scheduleCloudSync`, debounce de 1.5s) um `upsert` em segundo plano pro Supabase. Se a rede falhar, o app continua funcionando só local e mostra "Sem conexão" no indicador da sidebar (`#sync-status`).
+- **A chave do `localStorage` é por conta**: `localKey()` retorna `financeiro_v2_<user.id>`, não uma chave fixa. Isso existe porque um aparelho compartilhado por duas contas diferentes já teve risco real de uma conta ver/sobrescrever o cache local da outra antes da nuvem sincronizar — não reintroduzir uma chave fixa aqui.
 - **Resolução de conflito ao logar** (`onAuthenticated`): compara `state.meta.lastModified` da cópia local com o da nuvem e fica com o mais recente — mesmo padrão de timestamp já usado em `importBackup()`, não é uma lógica nova.
-- **Chaves do Supabase**: `SUPABASE_URL`/`SUPABASE_ANON_KEY` ficam hardcoded no topo do `<script>` do `index.html`. A anon key é pública por design do Supabase (a proteção de verdade é a RLS), então não precisa de variável de ambiente/segredo aqui.
+- **Excluir conta** (botão "Excluir minha conta" na Zona de risco, aba Configurações): chama `POST /api/delete-account` com o `access_token` da sessão. A function verifica o token, descobre o usuário e apaga com a Admin API do Supabase — o `on delete cascade` da tabela `financeiro_state` cuida de apagar os dados junto. Diferente do botão "Apagar todos os meus dados" (`resetAll()`), que só zera os dados e mantém o login.
+- **Chaves do Supabase**: `SUPABASE_URL`/`SUPABASE_ANON_KEY` ficam hardcoded no topo do `<script>` do `index.html` (e duplicadas em `api/delete-account.js`, que roda em outro ambiente). A anon key é pública por design do Supabase (a proteção de verdade é a RLS), então não precisa de variável de ambiente/segredo. Já a `SUPABASE_SERVICE_ROLE_KEY` (usada só na function) é secreta de verdade e só existe como env var no Vercel.
 
-## Modelo de dados (guardado como JSON — local em `localStorage` chave `financeiro_v2`, e em espelho na nuvem na coluna `data` de `financeiro_state`)
+## Modelo de dados (guardado como JSON — local em `localStorage` na chave `financeiro_v2_<user.id>`, e em espelho na nuvem na coluna `data` de `financeiro_state`)
 
 ```
 state = {
@@ -73,6 +76,8 @@ Status possíveis: `Pendente`, `Lançado` (só cartão, entre Pendente e Pago), 
 2. Etiqueta "auto" continuava aparecendo em lançamentos cujo compromisso original já tinha sido excluído — resolvido checando se `commitmentId` ainda existe em `state.commitments`.
 3. Progresso de parcela mostrava "1/60" para financiamentos que ainda nem tinham começado — resolvido tratando `diff < 0` como "ainda não começou".
 4. Import de backup sem validação de estrutura podia quebrar o app silenciosamente — resolvido com `validateBackupShape()` e cópia de segurança em memória antes de aplicar.
+5. Botão "Sair da conta" não saía de verdade — `supa.auth.signOut()` não era aguardado antes do `location.reload()`, então a página recarregava com a sessão antiga ainda válida. Resolvido tornando `handleSignOut()` `async` com `await`.
+6. O cache do `localStorage` usava uma chave fixa (`financeiro_v2`) compartilhada por qualquer conta que logasse no mesmo navegador — uma conta podia ver/sobrescrever o cache local de outra antes de sincronizar com a nuvem. Resolvido com `localKey()` por `user.id` (ver seção de sincronização acima).
 
 ## Pendências / ideias para o futuro (mencionadas ao usuário, não implementadas)
 
