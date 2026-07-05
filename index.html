@@ -621,9 +621,15 @@ function authMessage(text, isError){
   el.style.color = isError ? 'var(--bad)' : 'var(--brand)';
   el.style.display = 'block';
 }
+function validAuthInput(email, password){
+  if(!email || !password){ authMessage('Preencha e-mail e senha para continuar.', true); return false; }
+  if(password.length < 6){ authMessage('A senha precisa ter no mínimo 6 caracteres.', true); return false; }
+  return true;
+}
 async function handleSignIn(){
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
+  if(!validAuthInput(email,password)) return;
   const { data, error } = await supa.auth.signInWithPassword({ email, password });
   if(error){ authMessage('Não consegui entrar: ' + error.message, true); return; }
   await onAuthenticated(data.session);
@@ -631,6 +637,7 @@ async function handleSignIn(){
 async function handleSignUp(){
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
+  if(!validAuthInput(email,password)) return;
   const { data, error } = await supa.auth.signUp({ email, password });
   if(error){ authMessage('Não consegui criar a conta: ' + error.message, true); return; }
   if(!data.session){ authMessage('Conta criada! Confirme seu e-mail (verifique a caixa de entrada) e depois clique em "Entrar".', false); return; }
