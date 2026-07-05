@@ -257,8 +257,8 @@
     <div class="brand">Meu Financeiro<small>controle mensal</small></div>
     <div class="nav">
       <button data-view="dashboard" class="active">Visão geral</button>
-      <button data-view="mes">Mês a mês</button>
-      <button data-view="compromissos">Compromissos fixos</button>
+      <button data-view="mes">Mensal</button>
+      <button data-view="compromissos">Compromissos</button>
       <button data-view="cartoes">Cartões</button>
       <button data-view="backup">Configurações</button>
     </div>
@@ -356,7 +356,7 @@
 
     <!-- MES -->
     <div class="view" id="view-mes">
-      <h1>Mês a mês</h1>
+      <h1>Mensal</h1>
       <p class="subtitle">Lance receitas e despesas. Clique no status para avançar (Pendente → Lançado → Pago, quando for cartão). Use o lápis para editar um lançamento já existente — inclusive para movê-lo para outro mês.</p>
       <div class="status-legend">
         <span><span class="badge pendente">Pendente</span> orçado, ainda não aconteceu</span>
@@ -389,7 +389,7 @@
             <div><label>Valor</label><input type="number" step="0.01" id="inc-amount" placeholder="0,00"></div>
             <div class="btn-wrap"><button class="btn" onclick="addIncome()">Adicionar</button></div>
           </div>
-          <p class="small" style="margin-top:10px;">Dica: salário fixo todo mês? Cadastre em "Compromissos fixos" como receita recorrente — ele aparece aqui sozinho todo mês.</p>
+          <p class="small" style="margin-top:10px;">Dica: salário fixo todo mês? Cadastre em "Compromissos" como receita recorrente — ele aparece aqui sozinho todo mês.</p>
         </div>
 
         <div class="panel">
@@ -420,7 +420,7 @@
 
     <!-- COMPROMISSOS -->
     <div class="view" id="view-compromissos">
-      <h1>Compromissos fixos</h1>
+      <h1>Compromissos</h1>
       <p class="subtitle">Cadastre aqui parcelamentos (carro, moto, compras parceladas), contas mensais recorrentes (internet, streaming, seguro) e também receitas fixas, como o seu salário. O sistema lança tudo automaticamente em cada mês.</p>
 
       <div class="panel">
@@ -1590,7 +1590,7 @@ function openManageModal(id){
         <div class="modal-section">
           <h4>Meses excluídos individualmente</h4>
           <div>${skipHtml}</div>
-          <p class="small" style="margin-top:8px;">Para pular só um mês específico (ex: não lavou o carro), vá em "Mês a mês", encontre o lançamento automático e clique em excluir — ele volta a aparecer aqui, e você pode restaurar quando quiser.</p>
+          <p class="small" style="margin-top:8px;">Para pular só um mês específico (ex: não lavou o carro), vá em "Mensal", encontre o lançamento automático e clique em excluir — ele volta a aparecer aqui, e você pode restaurar quando quiser.</p>
         </div>
 
         <div class="modal-close-row"><button class="btn secondary" onclick="closeModal()">Fechar</button></div>
