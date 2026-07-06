@@ -951,10 +951,9 @@ function cardInvoiceTotals(mm, cardId){
   return { lancado, pendente, previsto: lancado+pendente };
 }
 function cardLimitUsage(cardId){
-  // Quanto do limite já está comprometido de verdade: "Lançado"/"Parcial" contam em
-  // QUALQUER mês (já foi gasto, só ainda não foi pago — inclusive faturas futuras já
-  // lançadas), não só no mês corrente. "Pendente" só conta no mês atual (é orçamento,
-  // ainda não virou gasto real nos meses futuros).
+  // Quanto do limite já está comprometido de verdade: só "Lançado"/"Parcial" contam
+  // (já foi gasto de fato, mesmo que em fatura futura) — "Pendente" é só orçamento,
+  // ainda não virou gasto real, então não consome limite até ser lançado.
   let used = 0;
   Object.keys(state.months).forEach(k=>{
     const mm = state.months[k];
@@ -962,7 +961,6 @@ function cardLimitUsage(cardId){
       if(!((e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId)) return;
       if(e.status==='Lançado') used += num(e.amount);
       else if(e.status==='Parcial') used += remaining(e);
-      else if(e.status==='Pendente' && k===todayKey()) used += num(e.amount);
     });
   });
   return used;
