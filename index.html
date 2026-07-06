@@ -1248,11 +1248,18 @@ function payInvoice(cardId, monthKey){
   const entries = [...mm.fixed, ...mm.variable].filter(e=>(e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId && e.status==='Lançado');
   if(!entries.length) return;
   const card = state.cards.find(c=>c.id===cardId);
-  if(!confirm(`Marcar ${entries.length} lançamento(s) de "${card?card.name:'cartão'}" em ${monthLabel(monthKey)} como pagos?`)) return;
+  const snapshot = entries.map(e=>({ e, status:e.status, paidAmount:e.paidAmount }));
   entries.forEach(e=>{ e.status='Pago'; e.paidAmount = e.amount; });
   save();
   renderDashboard();
   renderMes();
+  const plural = entries.length>1 ? 'lançamentos' : 'lançamento';
+  showUndoToast(`${entries.length} ${plural} de "${card?card.name:'cartão'}" marcado(s) como pago em ${monthLabel(monthKey)}.`, () => {
+    snapshot.forEach(s=>{ s.e.status = s.status; s.e.paidAmount = s.paidAmount; });
+    save();
+    renderDashboard();
+    renderMes();
+  });
 }
 
 function renderTimeline(key){
