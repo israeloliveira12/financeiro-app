@@ -74,8 +74,8 @@
 
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;min-width:0;}
-  .card .label{font-size:11.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .card .value{font-family:var(--mono);font-size:19px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .card .label{font-size:11.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;margin-bottom:7px;}
+  .card .value{font-family:var(--mono);font-size:19px;font-weight:600;overflow-wrap:break-word;}
   .value.pos{color:var(--brand);}
   .value.neg{color:var(--bad);}
 
@@ -93,7 +93,9 @@
   .tl-bar{height:100%;background:var(--brand);border-radius:6px 0 0 6px;transition:width .2s;}
   .tl-bar.over{background:var(--bad);}
   .tl-nums{display:flex;gap:8px;font-family:var(--mono);font-size:12px;justify-content:flex-end;align-items:center;}
-  .tl-nums input{width:74px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:6px;padding:3px 6px;text-align:right;}
+  .tl-nums input{width:74px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:6px;padding:3px 6px 3px 20px;text-align:right;}
+  .rs-wrap{position:relative;display:inline-flex;}
+  .rs-prefix{position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:10.5px;color:var(--ink-soft);pointer-events:none;}
 
   table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:auto;}
   th{text-align:left;color:var(--ink-soft);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:8px 7px;border-bottom:1px solid var(--line);}
@@ -164,7 +166,8 @@
   .mode-toggle button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1);}
   .mes-section-toggle{display:none;}
 
-  .nav-strip{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
+  .nav-strip{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
+  .ano-totals{margin-left:auto;}
   .nav-strip button.step{all:unset;cursor:pointer;width:30px;height:30px;border-radius:8px;background:#fff;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--ink);}
   .nav-strip button.step:hover{background:#F4F6F5;}
   .nav-strip .cur{font-size:16px;font-weight:700;min-width:150px;}
@@ -256,6 +259,7 @@
     .card{padding:13px 14px;}
     .card .value{font-size:17px;}
     .nav-strip .cur{min-width:0;font-size:14px;}
+    .ano-totals{margin-left:0;flex-basis:100%;}
     .modal-box{padding:18px 16px;max-height:90vh;}
 
     /* Tabelas viram "cartões" empilhados, sem rolagem horizontal forçada */
@@ -360,7 +364,7 @@
             <button class="step" id="ano-prev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
             <div class="cur" id="ano-label"></div>
             <button class="step" id="ano-next"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
-            <div style="margin-left:auto;" class="small">
+            <div class="ano-totals small">
               Receita: <strong id="ano-total-income"></strong> &nbsp;·&nbsp;
               Despesas: <strong id="ano-total-expense"></strong> &nbsp;·&nbsp;
               Saldo: <strong id="ano-total-saldo"></strong>
@@ -547,6 +551,7 @@
 
       <div class="panel">
         <h2>Sua conta</h2>
+        <div class="kv"><span>Nome</span><strong id="auth-name-label"></strong></div>
         <div class="kv"><span>E-mail conectado</span><strong id="auth-email-label" style="font-family:var(--mono);"></strong></div>
         <div class="backup-row"><button class="btn secondary" onclick="handleSignOut()">Sair da conta</button></div>
       </div>
@@ -814,10 +819,15 @@ async function handleSignOut(){
   await supa.auth.signOut();
   location.reload();
 }
+function userDisplayName(){
+  if(!currentSession) return '';
+  const meta = currentSession.user.user_metadata || {};
+  return meta.full_name || meta.name || currentSession.user.email;
+}
 function renderUserChip(){
   if(!currentSession) return;
   const meta = currentSession.user.user_metadata || {};
-  const name = meta.full_name || meta.name || currentSession.user.email;
+  const name = userDisplayName();
   const avatar = meta.avatar_url || meta.picture;
   document.getElementById('user-name').textContent = name;
   document.getElementById('user-email').textContent = currentSession.user.email;
@@ -1298,7 +1308,7 @@ function renderTimeline(key){
       <div class="tl-bar-wrap"><div class="tl-bar ${over?'over':''}" style="width:${Math.max(pct,3)}%"></div></div>
       <div class="tl-nums">
         <span title="Comprometido (fixo)">${fmt.format(committed)}</span>
-        <input type="number" step="0.01" value="${expected||''}" placeholder="renda esp." onchange="setProjection('${k}',this.value)">
+        <span class="rs-wrap"><span class="rs-prefix">R$</span><input type="number" step="0.01" value="${expected||''}" placeholder="renda esp." onchange="setProjection('${k}',this.value)"></span>
         <span title="Livre estimado" style="color:${livre<0?'var(--bad)':'var(--brand)'};font-weight:600;">${expectedNum?fmt.format(livre):'—'}</span>
       </div>
     </div>`;
@@ -2023,6 +2033,8 @@ function renderAll(){
   refreshCardSelects();
   const emailLbl = document.getElementById('auth-email-label');
   if(emailLbl && currentSession) emailLbl.textContent = currentSession.user.email;
+  const nameLbl = document.getElementById('auth-name-label');
+  if(nameLbl && currentSession) nameLbl.textContent = userDisplayName();
 }
 function bootUI(){
   populateStaticSelects();

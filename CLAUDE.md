@@ -85,6 +85,8 @@ Status possíveis: `Pendente`, `Lançado` (só cartão, entre Pendente e Pago), 
 6. O cache do `localStorage` usava uma chave fixa (`financeiro_v2`) compartilhada por qualquer conta que logasse no mesmo navegador — uma conta podia ver/sobrescrever o cache local de outra antes de sincronizar com a nuvem. Resolvido com `localKey()` por `user.id` (ver seção de sincronização acima).
 7. No celular, a coluna de Status (badge + "R$X de R$Y" quando Parcial) ficava com os dois lado a lado colidindo, porque o `<td>` vira `display:flex` na media query mobile e os dois elementos-irmãos viravam itens do flex. Resolvido agrupando os dois num wrapper único dentro do `<td>`.
 8. O painel "Faturas dos cartões" usava uma CSS grid de colunas fixas dentro de um `min-width:460px` — no celular isso cortava/escondia os valores da direita em vez de deixar claro que dava pra rolar. Resolvido trocando por um layout flex-wrap que empilha sozinho em telas estreitas.
+9. `.card .label`/`.card .value` cortavam com reticências (`text-overflow:ellipsis`) quando o número era grande — no modo "Ano" da Visão Geral, valores de 6+ dígitos (totais anuais) e o rótulo "Acumulado até dez/26" ficavam ilegíveis no celular. Resolvido deixando o texto quebrar linha (`overflow-wrap:break-word`) em vez de truncar — nunca escondemos um número de verdade.
+10. A faixa "‹ ano ›" + resumo (Receita/Despesas/Saldo) no modo Ano não quebrava linha — no celular o resumo espremia do lado das setas. Resolvido com `flex-wrap` no `.nav-strip` e uma classe `.ano-totals` que cai pra linha de baixo em telas estreitas.
 
 ## Pendências / ideias para o futuro (mencionadas ao usuário, não implementadas)
 
