@@ -1,14 +1,26 @@
 # Contexto do projeto — Meu Financeiro
 
-Sistema de controle financeiro pessoal do Israel, feito em HTML/CSS/JS puro (um único arquivo `index.html`, sem build). Roda no navegador (PC ou celular, publicado no Vercel), com login por e-mail/senha e sincronização na nuvem via Supabase — pensado para uso pessoal (substituiu uma planilha Excel).
+Sistema de controle financeiro pessoal do Israel, feito em HTML/CSS/JS puro (sem build, sem framework, sem bundler). Roda no navegador (PC ou celular, publicado no Vercel), com login por e-mail/senha e sincronização na nuvem via Supabase — pensado para uso pessoal (substituiu uma planilha Excel).
 
 Este arquivo existe para dar contexto rápido em qualquer sessão nova do Claude Code/Cowork sobre esse projeto — ele foi construído ao longo de uma conversa longa no claude.ai, e este é o resumo do que foi decidido e por quê.
 
 ## Arquivos do projeto
 
-- `index.html` — o app inteiro (HTML + CSS + JS inline, um arquivo só)
+- `index.html` — só o HTML/markup das telas (sidebar, views, modais). CSS e JS foram extraídos pra arquivos próprios (ver abaixo) — decisão explícita do usuário pra facilitar manutenção, sem adicionar build/bundler.
+- `style.css` — todo o CSS do app.
+- `js/` — o JavaScript, dividido por assunto e carregado via `<script src>` simples (sem módulos ES, sem bundler — tudo continua no mesmo escopo global de sempre, só organizado em arquivos):
+  - `icons.js` — `ICON`/`GOOGLE_ICON` (SVGs inline)
+  - `utils.js` — formatação de data/moeda, helpers puros sem dependência de estado
+  - `state.js` — modelo de dados (`state`, `save`/`load`, `localKey`), helpers de cartão, regras de vigência de compromissos, `ensureMonth`, cálculos (`monthTotals`, `cardLimitUsage` etc.), status
+  - `auth.js` — cliente Supabase, login/signup/Google/recuperação de senha, sincronização com a nuvem, chip do usuário
+  - `dashboard.js` — tudo da "Visão geral" (cards, gráficos, rosca, faturas, timeline)
+  - `mes.js` — tudo do "Mensal" (lançamentos, tabelas, abas de seção)
+  - `compromissos.js` — CRUD de compromissos + modal de gerenciar + toast de desfazer (`showUndoToast`)
+  - `cartoes.js` — CRUD de cartões
+  - `backup.js` — exportar/importar/resetar/excluir conta
+  - `main.js` — **carrega por último**: wiring de navegação entre abas e o boot inicial (`populateStaticSelects`, `bootUI`, `boot()`, `supa.auth.onAuthStateChange`). Só funciona por último porque chama funções definidas nos outros arquivos — os demais arquivos podem carregar em qualquer ordem entre si, já que tudo que fazem no top-level é ou definição de função (hoisted) ou `addEventListener`/`onclick` (só executa depois, quando tudo já carregou).
 - `manifest.json` — permite instalar como PWA no celular
-- `sw.js` — service worker, cache básico para uso offline
+- `sw.js` — service worker; `FILES_TO_CACHE` precisa ser atualizado se algum arquivo novo em `js/` for criado
 - `icon-192.png`, `icon-512.png` — ícones do PWA
 - `supabase/schema.sql` — script pra rodar uma vez no SQL Editor do Supabase (cria a tabela `financeiro_state` e as políticas de Row Level Security)
 - `api/delete-account.js` — function serverless do Vercel (Node, sem dependências) que exclui a conta de login do usuário via Supabase Admin API, usando a `SUPABASE_SERVICE_ROLE_KEY` (variável de ambiente só no Vercel, nunca no cliente)

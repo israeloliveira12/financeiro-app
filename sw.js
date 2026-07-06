@@ -1,10 +1,21 @@
-const CACHE_NAME = 'financeiro-cache-v2';
+const CACHE_NAME = 'financeiro-cache-v3';
 const FILES_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './style.css',
+  './js/icons.js',
+  './js/utils.js',
+  './js/state.js',
+  './js/auth.js',
+  './js/dashboard.js',
+  './js/mes.js',
+  './js/compromissos.js',
+  './js/cartoes.js',
+  './js/backup.js',
+  './js/main.js'
 ];
 
 self.addEventListener('install', (event) => {
