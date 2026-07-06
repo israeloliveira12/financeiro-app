@@ -1339,13 +1339,23 @@ function renderCardsSummary(){
   const over = totalUsed > totalLimit;
   const disponivel = totalLimit - totalUsed;
   const semLimite = state.cards.length - withLimit.length;
+  const perCardHtml = withLimit.map(c=>{
+    const usedC = cardLimitUsage(c.id);
+    const pctC = Math.min(100, (usedC/c.limit)*100);
+    const overC = usedC > c.limit;
+    return `<div class="debt-row">
+      <div class="debt-head"><span><span class="tag-card" style="background:${c.color||'#999'}"></span>${c.name}</span><span class="small">${pctC.toFixed(0)}% usado</span></div>
+      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${overC?'over':''}" style="width:${Math.max(pctC,2)}%"></div></div>
+    </div>`;
+  }).join('');
   el.innerHTML = `
     <div class="debt-head" style="margin-bottom:6px;">
       <span class="small">${withLimit.length} ${withLimit.length>1?'cartões':'cartão'} com limite cadastrado</span>
       <span class="small"><strong>${pct.toFixed(0)}% usado</strong> · ${disponivel>=0?fmt.format(disponivel)+' livre':'estourado'}</span>
     </div>
     <div class="tl-bar-wrap" style="height:10px;margin-bottom:10px;"><div class="tl-bar ${over?'over':''}" style="width:${Math.max(pct,2)}%"></div></div>
-    <div class="small">${fmt.format(totalUsed)} usado de ${fmt.format(totalLimit)} de limite total.${semLimite>0?` (${semLimite} ${semLimite>1?'cartões':'cartão'} sem limite cadastrado ${semLimite>1?'não entram':'não entra'} nessa conta.)`:''}</div>
+    <div class="small" style="margin-bottom:16px;">${fmt.format(totalUsed)} usado de ${fmt.format(totalLimit)} de limite total.${semLimite>0?` (${semLimite} ${semLimite>1?'cartões':'cartão'} sem limite cadastrado ${semLimite>1?'não entram':'não entra'} nessa conta.)`:''}</div>
+    ${perCardHtml}
   `;
 }
 function payInvoice(cardId, monthKey){
