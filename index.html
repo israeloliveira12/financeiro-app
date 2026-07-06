@@ -79,7 +79,6 @@
   .value.pos{color:var(--brand);}
   .value.neg{color:var(--bad);}
 
-  .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
   .grid2-equal{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(16,24,21,.05);}
@@ -237,7 +236,6 @@
     .main{padding:18px 16px calc(76px + env(safe-area-inset-bottom));}
     .cards{grid-template-columns:1fr 1fr;}
     .cols3{grid-template-columns:1fr;}
-    .grid2{grid-template-columns:1fr;}
     .grid2-equal{grid-template-columns:1fr;}
     .mes-section-toggle{display:inline-flex;}
     .cols3 .panel{display:none;}
@@ -325,7 +323,7 @@
       <div id="dash-mode-mes">
         <div class="cards" id="dash-cards"></div>
 
-        <div class="grid2">
+        <div class="grid2-equal">
           <div class="panel">
             <h2>Saúde financeira do mês</h2>
             <p class="panel-hint">Quanto da sua renda já está presa em despesas fixas</p>
