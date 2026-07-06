@@ -338,12 +338,6 @@
           </div>
         </div>
 
-        <div class="panel">
-          <h2>Comprometido x renda esperada — próximos 6 meses</h2>
-          <p class="panel-hint">Edite a "renda esperada" de cada mês para calibrar. Salários cadastrados como compromisso já entram automaticamente.</p>
-          <div class="timeline" id="dash-timeline"></div>
-        </div>
-
         <div class="grid2-equal">
           <div class="panel">
             <h2>Maiores despesas do mês</h2>
@@ -390,6 +384,12 @@
           <div class="chart-legend"><span><span class="dot" style="background:var(--brand)"></span>Saldo acumulado</span></div>
           <div id="chart-saldo"></div>
         </div>
+      </div>
+
+      <div class="panel" id="dash-timeline-wrap">
+        <h2>Comprometido x renda esperada — próximos 6 meses</h2>
+        <p class="panel-hint">Edite a "renda esperada" de cada mês para calibrar. Salários cadastrados como compromisso já entram automaticamente.</p>
+        <div class="timeline" id="dash-timeline"></div>
       </div>
     </div>
 
@@ -952,6 +952,23 @@ function cardInvoiceTotals(mm, cardId){
   const pendente = entries.filter(e=>e.status==='Pendente'||e.status==='Parcial').reduce((s,e)=>s+remaining(e),0);
   return { lancado, pendente, previsto: lancado+pendente };
 }
+function cardLimitUsage(cardId){
+  // Quanto do limite já está comprometido de verdade: "Lançado"/"Parcial" contam em
+  // QUALQUER mês (já foi gasto, só ainda não foi pago — inclusive faturas futuras já
+  // lançadas), não só no mês corrente. "Pendente" só conta no mês atual (é orçamento,
+  // ainda não virou gasto real nos meses futuros).
+  let used = 0;
+  Object.keys(state.months).forEach(k=>{
+    const mm = state.months[k];
+    [...mm.fixed, ...mm.variable].forEach(e=>{
+      if(!((e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId)) return;
+      if(e.status==='Lançado') used += num(e.amount);
+      else if(e.status==='Parcial') used += remaining(e);
+      else if(e.status==='Pendente' && k===todayKey()) used += num(e.amount);
+    });
+  });
+  return used;
+}
 function monthTotals(key){
   const mm = ensureMonth(key);
   const income = sumEntries(mm.income);
@@ -1120,6 +1137,7 @@ function setDashboardMode(mode){
   document.querySelectorAll('#dash-mode-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
   document.getElementById('dash-mode-mes').style.display = mode==='mes' ? '' : 'none';
   document.getElementById('dash-mode-ano').style.display = mode==='ano' ? '' : 'none';
+  document.getElementById('dash-timeline-wrap').style.display = mode==='mes' ? '' : 'none';
 }
 
 function forecastWindow(){
@@ -1236,9 +1254,10 @@ function renderFaturasInto(mm, targetId, monthKey){
     const payBtn = inv.lancado>0 ? `<button class="btn secondary" onclick="payInvoice('${c.id}','${monthKey}')">Pagar fatura</button>` : `<span></span>`;
     let limitHtml = '';
     if(c.limit){
-      const pct = Math.min(100, (inv.previsto/c.limit)*100);
-      const over = inv.previsto > c.limit;
-      const disponivel = c.limit - inv.previsto;
+      const used = cardLimitUsage(c.id);
+      const pct = Math.min(100, (used/c.limit)*100);
+      const over = used > c.limit;
+      const disponivel = c.limit - used;
       limitHtml = `<div class="fatura-limit">
         <div class="debt-head" style="margin-bottom:5px;">
           <span class="small">Limite do cartão</span>
