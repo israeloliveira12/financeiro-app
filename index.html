@@ -73,7 +73,7 @@
   .subtitle{color:var(--ink-soft);font-size:13.5px;margin:0 0 22px;max-width:760px;line-height:1.5;}
 
   .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px;}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;min-width:0;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;min-width:0;box-shadow:0 1px 2px rgba(16,24,21,.05);}
   .card .label{font-size:11.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;margin-bottom:7px;}
   .card .value{font-family:var(--mono);font-size:19px;font-weight:600;overflow-wrap:break-word;}
   .value.pos{color:var(--brand);}
@@ -82,7 +82,7 @@
   .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
   .grid2-equal{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:20px;}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(16,24,21,.05);}
   .panel h2{font-size:15px;margin:0 0 4px;}
   .panel .panel-hint{font-weight:400;color:var(--ink-soft);font-size:12px;margin:0 0 14px;}
 
@@ -332,9 +332,9 @@
             <div id="saude-panel"></div>
           </div>
           <div class="panel">
-            <h2>Faturas dos cartões (mês atual)</h2>
-            <p class="panel-hint">Lançado = já gasto · Pendente = ainda orçado</p>
-            <div id="faturas-panel"></div>
+            <h2>Crédito disponível</h2>
+            <p class="panel-hint">Limite total entre todos os cartões, considerando compras já lançadas mesmo em faturas futuras</p>
+            <div id="cards-summary-panel"></div>
           </div>
         </div>
 
@@ -1126,7 +1126,7 @@ function renderDashboard(){
   renderTopDespesas(t.mm);
   renderDebtProgress();
   renderSaude(key,t);
-  renderFaturas(key);
+  renderCardsSummary();
   renderTimeline(key);
   renderAno();
 }
@@ -1226,8 +1226,27 @@ function renderSaldoTrendChart(){
   document.getElementById('chart-saldo').innerHTML = svg;
 }
 
+function donutSVG(segments, size, thickness){
+  const r = (size-thickness)/2;
+  const cx = size/2, cy = size/2;
+  const circumference = 2*Math.PI*r;
+  const total = segments.reduce((s,x)=>s+x.value,0) || 1;
+  let acc = 0;
+  const arcs = segments.filter(s=>s.value>0).map(s=>{
+    const len = (s.value/total)*circumference;
+    const dasharray = `${len.toFixed(2)} ${(circumference-len).toFixed(2)}`;
+    const dashoffset = (-acc).toFixed(2);
+    acc += len;
+    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="${thickness}" stroke-dasharray="${dasharray}" stroke-dashoffset="${dashoffset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="flex-shrink:0;">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#EEF2F0" stroke-width="${thickness}"/>
+    ${arcs}
+  </svg>`;
+}
 function renderSaude(key,t){
   const fixedTotal = sumEntries(t.mm.fixed);
+  const variableTotal = sumEntries(t.mm.variable);
   const ratio = t.income>0 ? fixedTotal/t.income : null;
   const savings = t.income>0 ? t.balance/t.income : null;
   let label,color;
@@ -1236,6 +1255,27 @@ function renderSaude(key,t){
   else if(ratio<0.75){ label='Atenção'; color='var(--warn)'; }
   else { label='Apertado'; color='var(--bad)'; }
   const pct = ratio===null?0:Math.min(100,ratio*100);
+
+  const sobra = t.income>0 ? Math.max(0, t.income-fixedTotal-variableTotal) : 0;
+  const donutBase = t.income>0 ? t.income : (fixedTotal+variableTotal);
+  const segments = [
+    {label:'Fixas', value:fixedTotal, color:'var(--info)'},
+    {label:'Variáveis', value:variableTotal, color:'var(--warn)'},
+    {label:'Sobra', value:sobra, color:'var(--brand)'},
+  ];
+  const donutHtml = donutBase>0 ? `
+    <div style="display:flex;align-items:center;gap:18px;margin-top:16px;">
+      ${donutSVG(segments, 108, 16)}
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
+        ${segments.filter(s=>s.value>0).map(s=>`
+          <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;">
+            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${s.color};vertical-align:middle;"></span>${s.label}</span>
+            <span style="font-family:var(--mono);font-weight:600;white-space:nowrap;">${fmt.format(s.value)} · ${(s.value/donutBase*100).toFixed(0)}%</span>
+          </div>`).join('')}
+      </div>
+    </div>
+  ` : '';
+
   document.getElementById('saude-panel').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <span class="health-badge" style="background:${ratio===null?'#EEF1F0':color};color:${ratio===null?'var(--ink-soft)':'#fff'}">${label}</span>
@@ -1243,6 +1283,7 @@ function renderSaude(key,t){
     </div>
     <div class="tl-bar-wrap" style="height:10px;margin-bottom:12px;"><div class="tl-bar" style="width:${pct}%;background:${ratio===null?'#ccc':color}"></div></div>
     <div class="small">${savings!==null ? `Taxa de sobra do mês: <strong style="color:${savings>=0?'var(--brand)':'var(--bad)'}">${(savings*100).toFixed(0)}%</strong> da renda${savings<0?' — mês fechando no vermelho':''}.` : 'Lance a receita do mês para calcular a taxa de sobra.'}</div>
+    ${donutHtml}
   `;
 }
 
@@ -1281,8 +1322,31 @@ function renderFaturasInto(mm, targetId, monthKey){
   }).join('');
   el.innerHTML = `<div class="fatura-list">${cards}</div>`;
 }
-function renderFaturas(key){
-  renderFaturasInto(ensureMonth(key), 'faturas-panel', key);
+function renderCardsSummary(){
+  const el = document.getElementById('cards-summary-panel');
+  if(!state.cards.length){
+    el.innerHTML = `<div class="empty">Cadastre seus cartões na aba "Cartões" para ver o resumo aqui.</div>`;
+    return;
+  }
+  const withLimit = state.cards.filter(c=>c.limit);
+  if(!withLimit.length){
+    el.innerHTML = `<div class="empty">Cadastre o limite de crédito dos seus cartões (aba "Cartões") para ver aqui quanto ainda está disponível no total.</div>`;
+    return;
+  }
+  const totalLimit = withLimit.reduce((s,c)=>s+num(c.limit),0);
+  const totalUsed = withLimit.reduce((s,c)=>s+cardLimitUsage(c.id),0);
+  const pct = Math.min(100, (totalUsed/totalLimit)*100);
+  const over = totalUsed > totalLimit;
+  const disponivel = totalLimit - totalUsed;
+  const semLimite = state.cards.length - withLimit.length;
+  el.innerHTML = `
+    <div class="debt-head" style="margin-bottom:6px;">
+      <span class="small">${withLimit.length} ${withLimit.length>1?'cartões':'cartão'} com limite cadastrado</span>
+      <span class="small"><strong>${pct.toFixed(0)}% usado</strong> · ${disponivel>=0?fmt.format(disponivel)+' livre':'estourado'}</span>
+    </div>
+    <div class="tl-bar-wrap" style="height:10px;margin-bottom:10px;"><div class="tl-bar ${over?'over':''}" style="width:${Math.max(pct,2)}%"></div></div>
+    <div class="small">${fmt.format(totalUsed)} usado de ${fmt.format(totalLimit)} de limite total.${semLimite>0?` (${semLimite} ${semLimite>1?'cartões':'cartão'} sem limite cadastrado ${semLimite>1?'não entram':'não entra'} nessa conta.)`:''}</div>
+  `;
 }
 function payInvoice(cardId, monthKey){
   const mm = ensureMonth(monthKey);
