@@ -162,6 +162,7 @@
   .mode-toggle{display:inline-flex;background:#E4E9E7;border-radius:9px;padding:3px;gap:2px;margin-bottom:20px;}
   .mode-toggle button{all:unset;cursor:pointer;padding:7px 18px;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink-soft);}
   .mode-toggle button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+  .mes-section-toggle{display:none;}
 
   .nav-strip{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
   .nav-strip button.step{all:unset;cursor:pointer;width:30px;height:30px;border-radius:8px;background:#fff;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--ink);}
@@ -235,6 +236,9 @@
     .cols3{grid-template-columns:1fr;}
     .grid2{grid-template-columns:1fr;}
     .grid2-equal{grid-template-columns:1fr;}
+    .mes-section-toggle{display:inline-flex;}
+    .cols3 .panel{display:none;}
+    .cols3 .panel.section-active{display:block;}
 
     .mobile-tabbar{
       display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;
@@ -421,8 +425,14 @@
         </div>
       </div>
 
+      <div class="mode-toggle mes-section-toggle" id="mes-section-toggle">
+        <button class="active" data-section="receitas" onclick="setMesSection('receitas')">Receitas</button>
+        <button data-section="fixas" onclick="setMesSection('fixas')">Fixas</button>
+        <button data-section="variaveis" onclick="setMesSection('variaveis')">Variáveis</button>
+      </div>
+
       <div class="cols3">
-        <div class="panel">
+        <div class="panel section-active" id="mes-panel-receitas">
           <div class="section-title"><h2>Receitas</h2><span class="section-total" id="tot-income"></span></div>
           <div class="table-scroll"><table class="entry-table-simple"><thead><tr><th>Descrição</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-income"></tbody></table></div>
           <div class="entry-form">
@@ -433,7 +443,7 @@
           <p class="small" style="margin-top:10px;">Dica: salário fixo todo mês? Cadastre em "Compromissos" como receita recorrente — ele aparece aqui sozinho todo mês.</p>
         </div>
 
-        <div class="panel">
+        <div class="panel" id="mes-panel-fixas">
           <div class="section-title"><h2>Despesas fixas</h2><span class="section-total" id="tot-fixed"></span></div>
           <div class="table-scroll"><table class="entry-table"><thead><tr><th>Descrição</th><th>Método</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-fixed"></tbody></table></div>
           <div class="entry-form">
@@ -445,7 +455,7 @@
           </div>
         </div>
 
-        <div class="panel">
+        <div class="panel" id="mes-panel-variaveis">
           <div class="section-title"><h2>Despesas variáveis</h2><span class="section-total" id="tot-variable"></span></div>
           <div class="table-scroll"><table class="entry-table"><thead><tr><th>Descrição</th><th>Método</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-variable"></tbody></table></div>
           <div class="entry-form">
@@ -1380,6 +1390,15 @@ function renderMes(){
   document.getElementById('tot-fixed').textContent = fmt.format(sumEntries(mm.fixed));
   document.getElementById('tot-variable').textContent = fmt.format(sumEntries(mm.variable));
   refreshCardSelects();
+  setMesSection(mesSection);
+}
+let mesSection = 'receitas';
+function setMesSection(section){
+  mesSection = section;
+  document.querySelectorAll('#mes-section-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.section===section));
+  document.getElementById('mes-panel-receitas').classList.toggle('section-active', section==='receitas');
+  document.getElementById('mes-panel-fixas').classList.toggle('section-active', section==='fixas');
+  document.getElementById('mes-panel-variaveis').classList.toggle('section-active', section==='variaveis');
 }
 
 function renderEntryTable(tbodyId, list, kind){
