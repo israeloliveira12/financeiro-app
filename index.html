@@ -182,19 +182,26 @@
   .kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #F0F2F1;font-size:13.5px;gap:14px;}
   .kv:last-child{border-bottom:none;}
 
-  .fatura-list{display:flex;flex-direction:column;}
-  .fatura-card{padding:13px 0;border-bottom:1px solid #F0F2F1;}
+  .fatura-list{display:flex;flex-direction:column;container-type:inline-size;}
+  .fatura-card{padding:14px 0;border-bottom:1px solid #F0F2F1;}
   .fatura-card:last-child{border-bottom:none;padding-bottom:0;}
   .fatura-card:first-child{padding-top:0;}
-  .fatura-top{display:flex;flex-wrap:wrap;align-items:center;gap:9px 20px;}
-  .fatura-name{font-size:13.5px;flex:1 1 140px;min-width:0;}
+  .fatura-top{display:grid;grid-template-columns:1fr 88px 88px 96px 122px;column-gap:14px;align-items:center;}
+  .fatura-name{font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .fatura-name strong{margin-left:2px;}
-  .fatura-vals{display:flex;gap:18px;flex-wrap:wrap;}
-  .fval{font-family:var(--mono);font-size:13px;font-weight:600;white-space:nowrap;}
+  .fatura-vals-row{display:contents;}
+  .fval{font-family:var(--mono);font-size:13px;font-weight:600;text-align:right;white-space:nowrap;}
   .fval .flabel{display:block;font-family:var(--sans);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft);margin-bottom:2px;}
   .fval.total{color:var(--brand);font-size:14px;}
-  .fatura-limit{margin-top:10px;display:flex;align-items:center;gap:10px;}
-  .fatura-limit .tl-bar-wrap{flex:1;}
+  .fatura-top .btn{justify-self:end;}
+  .fatura-limit{margin-top:12px;}
+  @container (max-width:520px){
+    .fatura-top{grid-template-columns:1fr;row-gap:10px;}
+    .fatura-name{white-space:normal;}
+    .fatura-vals-row{display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:10px;grid-column:1;}
+    .fval{text-align:left;}
+    .fatura-top .btn{grid-column:1;justify-self:stretch;width:100%;}
+  }
 
   .health-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;}
 
@@ -1179,21 +1186,24 @@ function renderFaturasInto(mm, targetId, monthKey){
   if(!state.cards.length){ el.innerHTML = `<div class="empty">Cadastre seus cartões na aba "Cartões" para ver as faturas aqui.</div>`; return; }
   const cards = state.cards.map(c=>{
     const inv = cardInvoiceTotals(mm, c.id);
-    const payBtn = inv.lancado>0 ? `<button class="btn secondary" onclick="payInvoice('${c.id}','${monthKey}')">Pagar fatura</button>` : '';
+    const payBtn = inv.lancado>0 ? `<button class="btn secondary" onclick="payInvoice('${c.id}','${monthKey}')">Pagar fatura</button>` : `<span></span>`;
     let limitHtml = '';
     if(c.limit){
       const pct = Math.min(100, (inv.previsto/c.limit)*100);
       const over = inv.previsto > c.limit;
       const disponivel = c.limit - inv.previsto;
       limitHtml = `<div class="fatura-limit">
+        <div class="debt-head" style="margin-bottom:5px;">
+          <span class="small">Limite do cartão</span>
+          <span class="small"><strong>${pct.toFixed(0)}% usado</strong> · ${disponivel>=0?fmt.format(disponivel)+' livre':'estourado'}</span>
+        </div>
         <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${over?'over':''}" style="width:${Math.max(pct,2)}%"></div></div>
-        <span class="small" style="white-space:nowrap;">${fmt.format(inv.previsto)} de ${fmt.format(c.limit)} · ${disponivel>=0?fmt.format(disponivel)+' livre':'estourado'}</span>
       </div>`;
     }
     return `<div class="fatura-card">
       <div class="fatura-top">
         <span class="fatura-name"><span class="tag-card" style="background:${c.color||'#999'}"></span><strong>${c.name}</strong>${c.dueDay?`<span class="small">&nbsp;· vence dia ${c.dueDay}</span>`:''}</span>
-        <div class="fatura-vals">
+        <div class="fatura-vals-row">
           <span class="fval"><span class="flabel">Lançado</span>${fmt.format(inv.lancado)}</span>
           <span class="fval"><span class="flabel">Pendente</span>${fmt.format(inv.pendente)}</span>
           <span class="fval total"><span class="flabel">Previsto</span>${fmt.format(inv.previsto)}</span>
