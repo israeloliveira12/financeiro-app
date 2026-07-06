@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financeiro-cache-v1';
+const CACHE_NAME = 'financeiro-cache-v2';
 const FILES_TO_CACHE = [
   './',
   './index.html',
@@ -24,10 +24,14 @@ self.addEventListener('activate', (event) => {
 });
 
 // Estratégia: tenta a rede primeiro (pra pegar atualizações), cai pro cache se estiver offline.
+// cache:'no-store' é importante aqui -- sem isso, o próprio cache HTTP do navegador podia
+// devolver uma resposta antiga pro fetch() sem nem chegar a rede de verdade, fazendo
+// "network first" na prática se comportar como "cache antigo first" (já causou updates
+// não aparecerem mesmo depois de recarregar a página manualmente).
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-store' })
       .then((response) => {
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
