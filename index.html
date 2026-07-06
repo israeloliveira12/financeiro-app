@@ -1039,11 +1039,13 @@ function renderMethodBreakdown(mm, targetId){
   });
   const data = Object.entries(totals).map(([method,total])=>({method,total})).sort((a,b)=>b.total-a.total);
   if(!data.length){ el.innerHTML = `<div class="empty">Nenhuma despesa lançada este mês.</div>`; return; }
-  const max = Math.max(...data.map(d=>d.total));
+  const totalAll = data.reduce((s,d)=>s+d.total,0);
   el.innerHTML = data.map(d=>{
-    const pct = max>0 ? (d.total/max*100) : 0;
+    // A barra mostra a fatia daquele método sobre o total de despesas do mês
+    // (soma de todas as barras = 100%) — não é relativo ao maior método.
+    const pct = totalAll>0 ? (d.total/totalAll*100) : 0;
     return `<div class="debt-row">
-      <div class="debt-head"><span>${d.method}</span><span class="small">${fmt.format(d.total)}</span></div>
+      <div class="debt-head"><span>${d.method}</span><span class="small">${fmt.format(d.total)} · ${pct.toFixed(0)}%</span></div>
       <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${Math.max(pct,3)}%"></div></div>
     </div>`;
   }).join('');
