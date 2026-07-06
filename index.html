@@ -130,8 +130,10 @@
   .toast-undo{all:unset;cursor:pointer;color:#7FD9BC;font-weight:700;font-size:13px;white-space:nowrap;}
   .toast-undo:hover{color:#fff;}
 
-  .status-legend{display:flex;flex-wrap:wrap;gap:14px 20px;font-size:11.5px;color:var(--ink-soft);margin:-8px 0 22px;align-items:center;}
+  .status-legend{display:flex;flex-wrap:wrap;gap:14px 20px;font-size:11.5px;color:var(--ink-soft);margin:10px 0 22px;align-items:center;background:#F5F7F6;border-radius:8px;padding:12px 14px;}
   .status-legend .badge{pointer-events:none;margin-right:6px;}
+  .legend-info-btn{all:unset;cursor:pointer;width:20px;height:20px;border-radius:50%;background:#EEF1F0;color:var(--ink-soft);font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .legend-info-btn:hover{background:var(--brand-soft);color:var(--brand);}
 
   .backup-alert{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:10px;}
 
@@ -157,6 +159,10 @@
   button.btn.danger{background:var(--bad);}
   button.btn.danger:hover{background:#9C362E;}
 
+  .mode-toggle{display:inline-flex;background:#E4E9E7;border-radius:9px;padding:3px;gap:2px;margin-bottom:20px;}
+  .mode-toggle button{all:unset;cursor:pointer;padding:7px 18px;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink-soft);}
+  .mode-toggle button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+
   .nav-strip{display:flex;align-items:center;gap:10px;margin-bottom:18px;}
   .nav-strip button.step{all:unset;cursor:pointer;width:30px;height:30px;border-radius:8px;background:#fff;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--ink);}
   .nav-strip button.step:hover{background:#F4F6F5;}
@@ -176,22 +182,19 @@
   .kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #F0F2F1;font-size:13.5px;gap:14px;}
   .kv:last-child{border-bottom:none;}
 
-  .fatura-grid{display:grid;grid-template-columns:1fr 92px 100px 108px;column-gap:18px;}
-  .fatura-head{display:contents;}
-  .fatura-head span{font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft);text-align:right;padding-bottom:8px;border-bottom:1px solid var(--line);}
-  .fatura-head span:first-child{text-align:left;}
-  .fatura-row{display:contents;}
-  .fatura-row > *{padding:11px 0;border-bottom:1px solid #F0F2F1;display:flex;align-items:center;min-width:0;}
-  .fatura-row:last-child > *{border-bottom:none;}
-  .fatura-name{font-size:13.5px;}
+  .fatura-list{display:flex;flex-direction:column;}
+  .fatura-card{padding:13px 0;border-bottom:1px solid #F0F2F1;}
+  .fatura-card:last-child{border-bottom:none;padding-bottom:0;}
+  .fatura-card:first-child{padding-top:0;}
+  .fatura-top{display:flex;flex-wrap:wrap;align-items:center;gap:9px 20px;}
+  .fatura-name{font-size:13.5px;flex:1 1 140px;min-width:0;}
   .fatura-name strong{margin-left:2px;}
-  .fval{font-family:var(--mono);font-size:13px;font-weight:600;justify-content:flex-end;text-align:right;}
+  .fatura-vals{display:flex;gap:18px;flex-wrap:wrap;}
+  .fval{font-family:var(--mono);font-size:13px;font-weight:600;white-space:nowrap;}
+  .fval .flabel{display:block;font-family:var(--sans);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft);margin-bottom:2px;}
   .fval.total{color:var(--brand);font-size:14px;}
-
-  .bar-mini{background:#EEF2F0;border-radius:3px;height:6px;width:100px;margin-bottom:3px;}
-  .bar-mini-fill{height:100%;border-radius:3px;}
-  .bar-mini-fill.inc{background:var(--brand);}
-  .bar-mini-fill.exp{background:var(--bad);}
+  .fatura-limit{margin-top:10px;display:flex;align-items:center;gap:10px;}
+  .fatura-limit .tl-bar-wrap{flex:1;}
 
   .health-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:700;}
 
@@ -209,21 +212,31 @@
 
   ::placeholder{color:#B7C0BC;}
 
+  .mobile-tabbar{display:none;}
+
   @media(max-width:960px){
     .app{flex-direction:column;}
-    .sidebar{position:static;height:auto;width:100%;flex-direction:row;align-items:center;overflow-x:auto;padding:12px 14px;gap:16px;}
+    .sidebar{position:static;height:auto;width:100%;flex-direction:row;align-items:center;padding:12px 14px;gap:16px;}
     .brand{margin:0;white-space:nowrap;}
     .brand small{display:none;}
-    .nav{flex-direction:row;margin-top:0;gap:6px;}
-    .nav button{white-space:nowrap;padding:9px 13px;}
+    .nav{display:none;}
     .sidebar-foot{display:none;}
     .user-chip{margin:0 0 0 auto;background:transparent;padding:4px;}
     .user-info{display:none;}
-    .main{padding:18px 16px;}
+    .main{padding:18px 16px calc(76px + env(safe-area-inset-bottom));}
     .cards{grid-template-columns:1fr 1fr;}
     .cols3{grid-template-columns:1fr;}
     .grid2{grid-template-columns:1fr;}
     .grid2-equal{grid-template-columns:1fr;}
+
+    .mobile-tabbar{
+      display:flex;position:fixed;left:0;right:0;bottom:0;z-index:50;
+      background:var(--sidebar);box-shadow:0 -2px 12px rgba(0,0,0,.18);
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+    }
+    .mobile-tabbar button{all:unset;box-sizing:border-box;cursor:pointer;flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border-radius:9px;color:#7E9188;font-size:10px;text-align:center;}
+    .mobile-tabbar button.active{color:#fff;background:#20302A;}
+    .mobile-tabbar button.active svg{color:var(--brand);}
   }
 
   @media(max-width:640px){
@@ -274,32 +287,79 @@
     <div class="sidebar-foot">Dados sincronizados com a nuvem — acesse de qualquer aparelho fazendo login com o mesmo e-mail.<div id="sync-status" style="margin-top:8px;font-weight:600;color:#9FB0A8;"></div></div>
   </div>
 
+  <nav class="mobile-tabbar">
+    <button data-view="dashboard" class="active"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/></svg><span>Geral</span></button>
+    <button data-view="mes"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Mensal</span></button>
+    <button data-view="compromissos"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Compr.</span></button>
+    <button data-view="cartoes"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span>Cartões</span></button>
+    <button data-view="backup"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Config.</span></button>
+  </nav>
+
   <div class="main">
 
     <!-- DASHBOARD -->
     <div class="view active" id="view-dashboard">
       <h1>Visão geral</h1>
-      <p class="subtitle">Sua situação financeira completa: mês atual, ano, saúde financeira e o que já está comprometido à frente.</p>
+      <p class="subtitle">Sua situação financeira completa: saúde do mês, faturas e o que já está comprometido à frente.</p>
 
-      <div class="cards" id="dash-cards"></div>
+      <div class="mode-toggle" id="dash-mode-toggle">
+        <button class="active" data-mode="mes" onclick="setDashboardMode('mes')">Mês</button>
+        <button data-mode="ano" onclick="setDashboardMode('ano')">Ano</button>
+      </div>
 
-      <div class="grid2">
-        <div class="panel">
-          <h2>Saúde financeira do mês</h2>
-          <p class="panel-hint">Quanto da sua renda já está presa em despesas fixas</p>
-          <div id="saude-panel"></div>
+      <div id="dash-mode-mes">
+        <div class="cards" id="dash-cards"></div>
+
+        <div class="grid2">
+          <div class="panel">
+            <h2>Saúde financeira do mês</h2>
+            <p class="panel-hint">Quanto da sua renda já está presa em despesas fixas</p>
+            <div id="saude-panel"></div>
+          </div>
+          <div class="panel">
+            <h2>Faturas dos cartões (mês atual)</h2>
+            <p class="panel-hint">Lançado = já gasto · Pendente = ainda orçado</p>
+            <div id="faturas-panel"></div>
+          </div>
         </div>
+
         <div class="panel">
-          <h2>Faturas dos cartões (mês atual)</h2>
-          <p class="panel-hint">Lançado = já gasto · Pendente = ainda orçado</p>
-          <div class="table-scroll"><div id="faturas-panel" style="min-width:460px;"></div></div>
+          <h2>Comprometido x renda esperada — próximos 6 meses</h2>
+          <p class="panel-hint">Edite a "renda esperada" de cada mês para calibrar. Salários cadastrados como compromisso já entram automaticamente.</p>
+          <div class="timeline" id="dash-timeline"></div>
+        </div>
+
+        <div class="grid2-equal">
+          <div class="panel">
+            <h2>Maiores despesas do mês</h2>
+            <p class="panel-hint">As 5 despesas de maior valor lançadas neste mês</p>
+            <div id="top-despesas-panel"></div>
+          </div>
+          <div class="panel">
+            <h2>Progresso das parcelas</h2>
+            <p class="panel-hint">Quanto falta para quitar cada financiamento</p>
+            <div id="debt-progress-panel"></div>
+          </div>
         </div>
       </div>
 
-      <div class="panel">
-        <h2>Comprometido x renda esperada — próximos 6 meses</h2>
-        <p class="panel-hint">Edite a "renda esperada" de cada mês para calibrar. Salários cadastrados como compromisso já entram automaticamente.</p>
-        <div class="timeline" id="dash-timeline"></div>
+      <div id="dash-mode-ano" style="display:none;">
+        <div class="panel">
+          <div class="nav-strip" style="margin-bottom:6px;">
+            <button class="step" id="ano-prev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <div class="cur" id="ano-label"></div>
+            <button class="step" id="ano-next"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
+            <div style="margin-left:auto;" class="small">
+              Receita: <strong id="ano-total-income"></strong> &nbsp;·&nbsp;
+              Despesas: <strong id="ano-total-expense"></strong> &nbsp;·&nbsp;
+              Saldo: <strong id="ano-total-saldo"></strong>
+            </div>
+          </div>
+          <div class="cards" id="dash-cards-ano" style="margin-bottom:20px;"></div>
+          <h2>Receita x Despesas — mês a mês</h2>
+          <p class="panel-hint">Comparativo do ano selecionado</p>
+          <div id="chart-ano"></div>
+        </div>
       </div>
 
       <div class="grid2-equal">
@@ -316,49 +376,16 @@
           <div id="chart-saldo"></div>
         </div>
       </div>
-
-      <div class="grid2-equal">
-        <div class="panel">
-          <h2>Maiores despesas do mês</h2>
-          <p class="panel-hint">As 5 despesas de maior valor lançadas neste mês</p>
-          <div id="top-despesas-panel"></div>
-        </div>
-        <div class="panel">
-          <h2>Progresso das parcelas</h2>
-          <p class="panel-hint">Quanto falta para quitar cada financiamento</p>
-          <div id="debt-progress-panel"></div>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="nav-strip" style="margin-bottom:6px;">
-          <button class="step" id="ano-prev"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
-          <div class="cur" id="ano-label"></div>
-          <button class="step" id="ano-next"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></button>
-          <div style="margin-left:auto;" class="small">
-            Receita: <strong id="ano-total-income"></strong> &nbsp;·&nbsp;
-            Despesas: <strong id="ano-total-expense"></strong> &nbsp;·&nbsp;
-            Saldo: <strong id="ano-total-saldo"></strong>
-          </div>
-        </div>
-        <h2 style="margin-top:6px;">Visão do ano — mês a mês</h2>
-        <table>
-          <thead><tr><th>Mês</th><th class="num">Receita</th><th class="num">Despesas</th><th class="num">Saldo</th><th class="num">Acumulado</th><th>Comparativo</th></tr></thead>
-          <tbody id="tbl-ano"></tbody>
-        </table>
-      </div>
-
-      <div class="panel">
-        <h2>Contas no cartão ainda não lançadas</h2>
-        <table id="dash-pendentes-cartao"><thead><tr><th>Mês</th><th>Descrição</th><th>Cartão</th><th class="num">Valor</th></tr></thead><tbody></tbody></table>
-      </div>
     </div>
 
     <!-- MES -->
     <div class="view" id="view-mes">
-      <h1>Mensal</h1>
-      <p class="subtitle">Lance receitas e despesas. Clique no status para avançar (Pendente → Lançado → Pago, quando for cartão). Use o lápis para editar um lançamento já existente — inclusive para movê-lo para outro mês.</p>
-      <div class="status-legend">
+      <div style="display:flex;align-items:center;gap:9px;">
+        <h1 style="margin:0;">Mensal</h1>
+        <button class="legend-info-btn" onclick="toggleLegendPopover()" title="O que significa cada status?">?</button>
+      </div>
+      <p class="subtitle">Lance receitas e despesas do mês. Clique no status pra avançar, ou no lápis pra editar.</p>
+      <div class="status-legend" id="status-legend-popover" style="display:none;">
         <span><span class="badge pendente">Pendente</span> orçado, ainda não aconteceu</span>
         <span><span class="badge lancado">Lançado</span> já gastou no cartão, fatura ainda não fechou</span>
         <span><span class="badge pago">Pago</span> quitado</span>
@@ -377,7 +404,7 @@
       <div class="panel" id="mes-faturas-wrap" style="display:none;">
         <h2>Faturas dos cartões</h2>
         <p class="panel-hint">Lançado = já gasto · Pendente = ainda orçado</p>
-        <div class="table-scroll"><div id="mes-faturas-panel" style="min-width:460px;"></div></div>
+        <div id="mes-faturas-panel"></div>
       </div>
 
       <div class="cols3">
@@ -472,6 +499,7 @@
           <div><label>Banco / bandeira</label><input type="text" id="card-bank" placeholder="Ex: Nu Pagamentos"></div>
           <div class="narrow"><label>Fecha dia</label><input type="number" id="card-closing" min="1" max="31" placeholder="Ex: 20"></div>
           <div class="narrow"><label>Vence dia</label><input type="number" id="card-due" min="1" max="31" placeholder="Ex: 27"></div>
+          <div><label>Limite de crédito</label><input type="number" step="0.01" id="card-limit" placeholder="Opcional"></div>
           <div class="narrow"><label>Cor</label><input type="color" id="card-color" value="#0E7A5F" style="padding:3px;height:38px;cursor:pointer;"></div>
           <div class="btn-wrap"><button class="btn" onclick="addCard()">Cadastrar</button></div>
         </div>
@@ -481,7 +509,7 @@
         <h2>Cartões cadastrados</h2>
         <div class="table-scroll">
         <table>
-          <thead><tr><th>Cartão</th><th>Banco</th><th>Fecha</th><th>Vence</th><th></th></tr></thead>
+          <thead><tr><th>Cartão</th><th>Banco</th><th>Fecha</th><th>Vence</th><th class="num">Limite</th><th></th></tr></thead>
           <tbody id="tbl-cards"></tbody>
         </table>
         </div>
@@ -948,12 +976,15 @@ function badgeClass(status){
 }
 
 /* ================= Navegação de abas ================= */
-document.querySelectorAll('.nav button').forEach(btn=>{
+// Cobre tanto os botões da sidebar (desktop) quanto a barra inferior (mobile) —
+// os dois conjuntos de botões ficam sincronizados, já que ambos existem no DOM
+// o tempo todo (só a visibilidade muda por CSS conforme o tamanho da tela).
+document.querySelectorAll('[data-view]').forEach(btn=>{
   btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+    const view = btn.dataset.view;
+    document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    document.getElementById('view-'+view).classList.add('active');
     renderAll();
   });
 });
@@ -1027,7 +1058,14 @@ function renderDashboard(){
   renderFaturas(key);
   renderTimeline(key);
   renderAno();
-  renderPendentesCartao();
+}
+
+let dashboardMode = 'mes';
+function setDashboardMode(mode){
+  dashboardMode = mode;
+  document.querySelectorAll('#dash-mode-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
+  document.getElementById('dash-mode-mes').style.display = mode==='mes' ? '' : 'none';
+  document.getElementById('dash-mode-ano').style.display = mode==='ano' ? '' : 'none';
 }
 
 function forecastWindow(){
@@ -1136,25 +1174,50 @@ function renderSaude(key,t){
   `;
 }
 
-function renderFaturasInto(mm, targetId){
+function renderFaturasInto(mm, targetId, monthKey){
   const el = document.getElementById(targetId);
   if(!state.cards.length){ el.innerHTML = `<div class="empty">Cadastre seus cartões na aba "Cartões" para ver as faturas aqui.</div>`; return; }
-  const rows = state.cards.map(c=>{
+  const cards = state.cards.map(c=>{
     const inv = cardInvoiceTotals(mm, c.id);
-    return `<div class="fatura-row">
-      <span class="fatura-name"><span class="tag-card" style="background:${c.color||'#999'}"></span><strong>${c.name}</strong>${c.dueDay?`<span class="small">&nbsp;· vence dia ${c.dueDay}</span>`:''}</span>
-      <span class="fval">${fmt.format(inv.lancado)}</span>
-      <span class="fval">${fmt.format(inv.pendente)}</span>
-      <span class="fval total">${fmt.format(inv.previsto)}</span>
+    const payBtn = inv.lancado>0 ? `<button class="btn secondary" onclick="payInvoice('${c.id}','${monthKey}')">Pagar fatura</button>` : '';
+    let limitHtml = '';
+    if(c.limit){
+      const pct = Math.min(100, (inv.previsto/c.limit)*100);
+      const over = inv.previsto > c.limit;
+      const disponivel = c.limit - inv.previsto;
+      limitHtml = `<div class="fatura-limit">
+        <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${over?'over':''}" style="width:${Math.max(pct,2)}%"></div></div>
+        <span class="small" style="white-space:nowrap;">${fmt.format(inv.previsto)} de ${fmt.format(c.limit)} · ${disponivel>=0?fmt.format(disponivel)+' livre':'estourado'}</span>
+      </div>`;
+    }
+    return `<div class="fatura-card">
+      <div class="fatura-top">
+        <span class="fatura-name"><span class="tag-card" style="background:${c.color||'#999'}"></span><strong>${c.name}</strong>${c.dueDay?`<span class="small">&nbsp;· vence dia ${c.dueDay}</span>`:''}</span>
+        <div class="fatura-vals">
+          <span class="fval"><span class="flabel">Lançado</span>${fmt.format(inv.lancado)}</span>
+          <span class="fval"><span class="flabel">Pendente</span>${fmt.format(inv.pendente)}</span>
+          <span class="fval total"><span class="flabel">Previsto</span>${fmt.format(inv.previsto)}</span>
+        </div>
+        ${payBtn}
+      </div>
+      ${limitHtml}
     </div>`;
   }).join('');
-  el.innerHTML = `<div class="fatura-grid">
-    <div class="fatura-head"><span></span><span>Lançado</span><span>Pendente</span><span>Previsto</span></div>
-    ${rows}
-  </div>`;
+  el.innerHTML = `<div class="fatura-list">${cards}</div>`;
 }
 function renderFaturas(key){
-  renderFaturasInto(ensureMonth(key), 'faturas-panel');
+  renderFaturasInto(ensureMonth(key), 'faturas-panel', key);
+}
+function payInvoice(cardId, monthKey){
+  const mm = ensureMonth(monthKey);
+  const entries = [...mm.fixed, ...mm.variable].filter(e=>(e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId && e.status==='Lançado');
+  if(!entries.length) return;
+  const card = state.cards.find(c=>c.id===cardId);
+  if(!confirm(`Marcar ${entries.length} lançamento(s) de "${card?card.name:'cartão'}" em ${monthLabel(monthKey)} como pagos?`)) return;
+  entries.forEach(e=>{ e.status='Pago'; e.paidAmount = e.amount; });
+  save();
+  renderDashboard();
+  renderMes();
 }
 
 function renderTimeline(key){
@@ -1193,48 +1256,53 @@ function setProjection(key,val){ state.projections[key] = num(val); save(); rend
 function renderAno(){
   document.getElementById('ano-label').textContent = currentYear;
   const data = [];
-  let maxVal = 1;
   for(let m=1;m<=12;m++){
     const key = `${currentYear}-${String(m).padStart(2,'0')}`;
-    const t = peekMonthTotals(key);
-    data.push({key,...t});
-    maxVal = Math.max(maxVal, t.income, t.expenses);
+    data.push({key, ...peekMonthTotals(key)});
   }
-  let rows = '';
-  data.forEach(d=>{
-    const incW = (d.income/maxVal*100).toFixed(1);
-    const expW = (d.expenses/maxVal*100).toFixed(1);
-    const acc = accumulatedUpTo(d.key);
-    rows += `<tr>
-      <td>${MONTH_NAMES[keyParts(d.key).m-1]}</td>
-      <td class="num">${fmt.format(d.income)}</td>
-      <td class="num">${fmt.format(d.expenses)}</td>
-      <td class="num" style="color:${d.balance>=0?'var(--brand)':'var(--bad)'}">${fmt.format(d.balance)}</td>
-      <td class="num">${fmt.format(acc)}</td>
-      <td><div class="bar-mini"><div class="bar-mini-fill inc" style="width:${incW}%"></div></div><div class="bar-mini"><div class="bar-mini-fill exp" style="width:${expW}%"></div></div></td>
-    </tr>`;
-  });
-  document.getElementById('tbl-ano').innerHTML = rows;
   const totalIncome = data.reduce((s,d)=>s+d.income,0);
   const totalExpense = data.reduce((s,d)=>s+d.expenses,0);
   document.getElementById('ano-total-income').textContent = fmt.format(totalIncome);
   document.getElementById('ano-total-expense').textContent = fmt.format(totalExpense);
   document.getElementById('ano-total-saldo').textContent = fmt.format(totalIncome-totalExpense);
+
+  const accEndOfYear = accumulatedUpTo(`${currentYear}-12`);
+  document.getElementById('dash-cards-ano').innerHTML = [
+    {label:'Receita do ano', value: fmt.format(totalIncome), cls:''},
+    {label:'Despesas do ano', value: fmt.format(totalExpense), cls:''},
+    {label:'Saldo do ano', value: fmt.format(totalIncome-totalExpense), cls: (totalIncome-totalExpense)>=0?'pos':'neg'},
+    {label:'Acumulado até dez/'+String(currentYear).slice(2), value: fmt.format(accEndOfYear), cls: accEndOfYear>=0?'pos':'neg'},
+  ].map(c=>`<div class="card"><div class="label">${c.label}</div><div class="value ${c.cls}">${c.value}</div></div>`).join('');
+
+  renderAnoChart(data);
 }
 document.getElementById('ano-prev').onclick = ()=>{ currentYear--; renderAno(); };
 document.getElementById('ano-next').onclick = ()=>{ currentYear++; renderAno(); };
 
-function renderPendentesCartao(){
-  let rows = '';
-  Object.keys(state.months).sort().forEach(k=>{
-    const mm = state.months[k];
-    ['fixed','variable'].forEach(cat=>{
-      mm[cat].filter(e=>(e.method==='Cartão de Crédito'||e.isCard) && e.status==='Pendente').forEach(e=>{
-        rows += `<tr><td>${monthLabel(k)}</td><td>${e.desc}</td><td>${cardName(e.cardId)}</td><td class="num">${fmt.format(e.amount)}</td></tr>`;
-      });
-    });
-  });
-  document.querySelector('#dash-pendentes-cartao tbody').innerHTML = rows || `<tr><td colspan="4" class="empty">Nada pendente no cartão no momento.</td></tr>`;
+function renderAnoChart(data){
+  const n = data.length;
+  const W=900,H=260,padL=36,padR=12,padT=18,padB=28;
+  const maxVal = Math.max(1, ...data.map(d=>Math.max(d.income,d.expenses))) * 1.15;
+  const groupW = (W-padL-padR)/n;
+  const barW = groupW*0.32;
+  const y = v => padT + (H-padT-padB) * (1 - v/maxVal);
+  const baseY = H-padB;
+  const bars = data.map((d,i)=>{
+    const gx = padL + groupW*i;
+    const incX = gx + groupW*0.5 - barW - 1.5;
+    const expX = gx + groupW*0.5 + 1.5;
+    const incY = y(d.income), expY = y(d.expenses);
+    return `
+      <rect x="${incX.toFixed(1)}" y="${incY.toFixed(1)}" width="${barW.toFixed(1)}" height="${(baseY-incY).toFixed(1)}" rx="2" fill="#0E7A5F"/>
+      <rect x="${expX.toFixed(1)}" y="${expY.toFixed(1)}" width="${barW.toFixed(1)}" height="${(baseY-expY).toFixed(1)}" rx="2" fill="#B8433A"/>
+      <text x="${(gx+groupW/2).toFixed(1)}" y="${H-7}" font-size="9.5" fill="#5B6663" text-anchor="middle">${MONTH_NAMES[keyParts(d.key).m-1].slice(0,3)}</text>
+    `;
+  }).join('');
+  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
+    <line x1="${padL}" y1="${baseY}" x2="${W-padR}" y2="${baseY}" stroke="#EEF2F0" stroke-width="1"/>
+    ${bars}
+  </svg>`;
+  document.getElementById('chart-ano').innerHTML = svg;
 }
 
 /* ================= Mês a mês ================= */
@@ -1249,15 +1317,15 @@ function renderMes(){
   const cardDefs = [
     {label:'Receita', value:fmt.format(t.income), cls:'', delta: deltaHTML(t.income, prevT.income, true)},
     {label:'Despesas', value:fmt.format(t.expenses), cls:'', delta: deltaHTML(t.expenses, prevT.expenses, false)},
-    {label:'Saldo do mês', value:fmt.format(t.balance), cls:t.balance>=0?'pos':'neg', delta: deltaHTML(t.balance, prevT.balance, true)},
-    {label:'Saldo acumulado', value:fmt.format(acc), cls:acc>=0?'pos':'neg', delta:''},
     {label:'A pagar', value:fmt.format(payable), cls: payable>0?'neg':'', delta:''},
     {label:'A receber', value:fmt.format(receivable), cls: receivable>0?'pos':'', delta:''},
+    {label:'Saldo do mês', value:fmt.format(t.balance), cls:t.balance>=0?'pos':'neg', delta: deltaHTML(t.balance, prevT.balance, true)},
+    {label:'Saldo acumulado', value:fmt.format(acc), cls:acc>=0?'pos':'neg', delta:''},
   ];
   document.getElementById('mes-cards').innerHTML = cardDefs.map(c=>`<div class="card"><div class="label">${c.label}</div><div class="value ${c.cls}">${c.value}</div>${c.delta}</div>`).join('');
 
   document.getElementById('mes-faturas-wrap').style.display = state.cards.length ? 'block' : 'none';
-  if(state.cards.length) renderFaturasInto(mm, 'mes-faturas-panel');
+  if(state.cards.length) renderFaturasInto(mm, 'mes-faturas-panel', currentMonth);
 
   renderEntryTable('tbl-income', mm.income, 'income');
   renderEntryTable('tbl-fixed', mm.fixed, 'fixed');
@@ -1282,7 +1350,7 @@ function renderEntryTable(tbodyId, list, kind){
       <td data-label="Descrição">${e.desc}${linkedCommitment?'<br><span class="tag-commit">auto</span>':''}</td>
       ${methodCell}
       <td class="num" data-label="Valor">${fmt.format(e.amount)}</td>
-      <td data-label="Status"><span class="badge ${badgeClass(e.status)}" onclick="cycleStatus('${kind}','${e.id}')">${e.status}</span>${progressNote}</td>
+      <td data-label="Status"><div class="status-cell"><span class="badge ${badgeClass(e.status)}" onclick="cycleStatus('${kind}','${e.id}')">${e.status}</span>${progressNote}</div></td>
       <td class="row-actions"><button onclick="openEntryEditModal('${kind}','${e.id}')" title="Editar">${ICON.edit}</button><button class="del" onclick="deleteEntry('${kind}','${e.id}')" title="Excluir">${ICON.trash}</button></td>
     </tr>`;
   }).join('');
@@ -1445,6 +1513,10 @@ function toggleCardSelect(prefix){
 document.getElementById('mes-prev').onclick = ()=>{ currentMonth = addMonthsToKey(currentMonth,-1); renderMes(); };
 document.getElementById('mes-next').onclick = ()=>{ currentMonth = addMonthsToKey(currentMonth,1); renderMes(); };
 document.getElementById('mes-today').onclick = ()=>{ currentMonth = todayKey(); renderMes(); };
+function toggleLegendPopover(){
+  const el = document.getElementById('status-legend-popover');
+  el.style.display = el.style.display==='none' ? 'flex' : 'none';
+}
 
 /* ================= Compromissos ================= */
 function toggleCommitFields(){
@@ -1673,10 +1745,11 @@ function addCard(){
     bank: document.getElementById('card-bank').value.trim(),
     closingDay: parseInt(document.getElementById('card-closing').value)||null,
     dueDay: parseInt(document.getElementById('card-due').value)||null,
+    limit: num(document.getElementById('card-limit').value)||null,
     color: document.getElementById('card-color').value || '#0E7A5F'
   };
   state.cards.push(c);
-  ['card-name','card-bank','card-closing','card-due'].forEach(id=>document.getElementById(id).value='');
+  ['card-name','card-bank','card-closing','card-due','card-limit'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('card-color').value = '#0E7A5F';
   save(); renderCartoes(); refreshCardSelects();
 }
@@ -1704,6 +1777,7 @@ function openCardEditModal(id){
         <div class="entry-form">
           <div class="narrow"><label>Fecha dia</label><input type="number" id="ecm2-closing" value="${c.closingDay||''}"></div>
           <div class="narrow"><label>Vence dia</label><input type="number" id="ecm2-due" value="${c.dueDay||''}"></div>
+          <div><label>Limite de crédito</label><input type="number" step="0.01" id="ecm2-limit" value="${c.limit||''}" placeholder="Opcional"></div>
           <div class="narrow"><label>Cor</label><input type="color" id="ecm2-color" value="${c.color||'#0E7A5F'}" style="padding:3px;height:38px;cursor:pointer;"></div>
         </div>
         <div class="modal-close-row">
@@ -1721,19 +1795,21 @@ function saveCardEdit(id){
   c.bank = document.getElementById('ecm2-bank').value.trim();
   c.closingDay = parseInt(document.getElementById('ecm2-closing').value)||null;
   c.dueDay = parseInt(document.getElementById('ecm2-due').value)||null;
+  c.limit = num(document.getElementById('ecm2-limit').value)||null;
   c.color = document.getElementById('ecm2-color').value || c.color;
   closeModal();
   save(); renderCartoes(); refreshCardSelects(); renderDashboard();
 }
 function renderCartoes(){
   const tbody = document.getElementById('tbl-cards');
-  if(!state.cards.length){ tbody.innerHTML = `<tr><td colspan="5" class="empty">Nenhum cartão cadastrado ainda.</td></tr>`; return; }
+  if(!state.cards.length){ tbody.innerHTML = `<tr><td colspan="6" class="empty">Nenhum cartão cadastrado ainda.</td></tr>`; return; }
   tbody.innerHTML = state.cards.map(c=>{
     return `<tr>
       <td data-label="Cartão"><span class="tag-card" style="background:${c.color||'#999'}"></span>${c.name}</td>
       <td class="small" data-label="Banco">${c.bank||'—'}</td>
       <td class="small" data-label="Fecha">${c.closingDay?('dia '+c.closingDay):'—'}</td>
       <td class="small" data-label="Vence">${c.dueDay?('dia '+c.dueDay):'—'}</td>
+      <td class="num" data-label="Limite">${c.limit?fmt.format(c.limit):'—'}</td>
       <td class="row-actions"><button onclick="openCardEditModal('${c.id}')" title="Editar">${ICON.edit}</button><button class="del" onclick="removeCard('${c.id}')" title="Excluir">${ICON.trash}</button></td>
     </tr>`;
   }).join('');

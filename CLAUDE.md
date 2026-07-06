@@ -31,7 +31,7 @@ Este arquivo existe para dar contexto rápido em qualquer sessão nova do Claude
 ```
 state = {
   meta: { startingBalance, lastModified, lastExported },
-  cards: [ {id, name, bank, closingDay, dueDay, color} ],
+  cards: [ {id, name, bank, closingDay, dueDay, color, limit} ],  // limit é opcional
   commitments: [ {
     id, desc, category: 'income'|'fixed'|'variable', amount,
     type: 'installment'|'monthly',
@@ -62,7 +62,10 @@ Status possíveis: `Pendente`, `Lançado` (só cartão, entre Pendente e Pago), 
 - **Exclusão sempre com toast "Desfazer" (7s)**, não com `confirm()` — trade-off deliberado (menos travamento de UI, mais seguro que um clique acidental apague algo pra sempre).
 - **Compromissos fixos nunca são "hard deleted" sem preservar histórico**: pular um mês usa `skipMonths`, encerrar no futuro usa `endMonth` (nunca mexe no passado). A etiqueta "auto" numa linha só aparece se o `commitmentId` ainda resolver para um compromisso existente (evita etiqueta órfã).
 - **Paleta e estilo**: verde `--brand: #0E7A5F` (positivo), vermelho `--bad: #B8433A` (negativo), fundo `--bg:#EEF1F0`, fonte mono para números (`--mono`). Ícones são SVG inline (não emoji — davam problema de renderização inconsistente entre sistemas).
-- **Tabelas viram "cartão empilhado" no celular** (`.table-scroll` + `data-label` em cada `<td>`) via media query `max-width:640px`. Qualquer tabela nova deve seguir esse padrão (adicionar `data-label="..."` em cada célula).
+- **Tabelas viram "cartão empilhado" no celular** (`.table-scroll` + `data-label` em cada `<td>`) via media query `max-width:640px`. Qualquer tabela nova deve seguir esse padrão (adicionar `data-label="..."` em cada célula). **Cuidado**: nessa media query o `<td>` vira `display:flex`, então uma célula com mais de um elemento-irmão (ex: badge de status + nota de progresso) precisa agrupar tudo num wrapper único dentro do `<td>` — senão os irmãos viram itens do flex lado a lado e colidem (bug real já visto na coluna de Status do "Mensal").
+- **Navegação mobile é uma barra fixa inferior** (`.mobile-tabbar`, ícone+texto pequeno), não mais a sidebar virando linha horizontal no topo — ela escondia itens do menu exigindo scroll horizontal. Os botões da sidebar (desktop) e da barra inferior (mobile) compartilham o mesmo `[data-view]` e o mesmo listener de clique; os dois ficam sempre no DOM, só a visibilidade muda por CSS.
+- **Painel "Faturas dos cartões"** usa layout flex-wrap (`.fatura-card`/`.fatura-top`/`.fatura-vals`), não mais uma CSS grid de colunas fixas — isso existe pra empilhar sozinho em telas estreitas em vez de vazar/cortar conteúdo pra fora da tela (bug real já visto). O botão "Pagar fatura" (`payInvoice(cardId, monthKey)`) marca em massa os lançamentos `Lançado` daquele cartão/mês como `Pago` — recebe o mês explícito porque esse painel aparece tanto no Dashboard (sempre mês atual) quanto no "Mensal" (mês navegável).
+- **Visão geral tem um toggle Mês/Ano** (`dashboardMode`, função `setDashboardMode()`) — no modo Ano, os cards e o gráfico de barras (`renderAnoChart()`) usam a navegação de ano já existente (`currentYear`/`ano-prev`/`ano-next`). Os painéis "Visão do ano" (tabela) e "Contas no cartão ainda não lançadas" foram removidos de propósito — o pedido foi tirar elementos "de planilha" e manter só visual/gráfico.
 
 ## Limitações conhecidas (decisões conscientes, não bugs)
 
@@ -78,6 +81,8 @@ Status possíveis: `Pendente`, `Lançado` (só cartão, entre Pendente e Pago), 
 4. Import de backup sem validação de estrutura podia quebrar o app silenciosamente — resolvido com `validateBackupShape()` e cópia de segurança em memória antes de aplicar.
 5. Botão "Sair da conta" não saía de verdade — `supa.auth.signOut()` não era aguardado antes do `location.reload()`, então a página recarregava com a sessão antiga ainda válida. Resolvido tornando `handleSignOut()` `async` com `await`.
 6. O cache do `localStorage` usava uma chave fixa (`financeiro_v2`) compartilhada por qualquer conta que logasse no mesmo navegador — uma conta podia ver/sobrescrever o cache local de outra antes de sincronizar com a nuvem. Resolvido com `localKey()` por `user.id` (ver seção de sincronização acima).
+7. No celular, a coluna de Status (badge + "R$X de R$Y" quando Parcial) ficava com os dois lado a lado colidindo, porque o `<td>` vira `display:flex` na media query mobile e os dois elementos-irmãos viravam itens do flex. Resolvido agrupando os dois num wrapper único dentro do `<td>`.
+8. O painel "Faturas dos cartões" usava uma CSS grid de colunas fixas dentro de um `min-width:460px` — no celular isso cortava/escondia os valores da direita em vez de deixar claro que dava pra rolar. Resolvido trocando por um layout flex-wrap que empilha sozinho em telas estreitas.
 
 ## Pendências / ideias para o futuro (mencionadas ao usuário, não implementadas)
 
