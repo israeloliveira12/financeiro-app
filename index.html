@@ -408,10 +408,17 @@
 
       <div class="cards" id="mes-cards"></div>
 
-      <div class="panel" id="mes-faturas-wrap" style="display:none;">
-        <h2>Faturas dos cartões</h2>
-        <p class="panel-hint">Lançado = já gasto · Pendente = ainda orçado</p>
-        <div id="mes-faturas-panel"></div>
+      <div class="grid2-equal" id="mes-secondary-grid">
+        <div class="panel" id="mes-faturas-wrap" style="display:none;">
+          <h2>Faturas dos cartões</h2>
+          <p class="panel-hint">Lançado = já gasto · Pendente = ainda orçado</p>
+          <div id="mes-faturas-panel"></div>
+        </div>
+        <div class="panel">
+          <h2>Gastos por forma de pagamento</h2>
+          <p class="panel-hint">Despesas fixas + variáveis deste mês</p>
+          <div id="mes-method-panel"></div>
+        </div>
       </div>
 
       <div class="cols3">
@@ -1023,6 +1030,24 @@ function renderTopDespesas(mm){
   `).join('');
 }
 
+function renderMethodBreakdown(mm, targetId){
+  const el = document.getElementById(targetId);
+  const totals = {};
+  [...mm.fixed, ...mm.variable].forEach(e=>{
+    const label = e.method || (e.isCard ? 'Cartão de Crédito' : 'Outro');
+    totals[label] = (totals[label]||0) + num(e.amount);
+  });
+  const data = Object.entries(totals).map(([method,total])=>({method,total})).sort((a,b)=>b.total-a.total);
+  if(!data.length){ el.innerHTML = `<div class="empty">Nenhuma despesa lançada este mês.</div>`; return; }
+  const max = Math.max(...data.map(d=>d.total));
+  el.innerHTML = data.map(d=>{
+    const pct = max>0 ? (d.total/max*100) : 0;
+    return `<div class="debt-row">
+      <div class="debt-head"><span>${d.method}</span><span class="small">${fmt.format(d.total)}</span></div>
+      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${Math.max(pct,3)}%"></div></div>
+    </div>`;
+  }).join('');
+}
 function renderDebtProgress(){
   const el = document.getElementById('debt-progress-panel');
   const installments = state.commitments.filter(c=>c.type==='installment');
@@ -1335,7 +1360,9 @@ function renderMes(){
   document.getElementById('mes-cards').innerHTML = cardDefs.map(c=>`<div class="card"><div class="label">${c.label}</div><div class="value ${c.cls}">${c.value}</div>${c.delta}</div>`).join('');
 
   document.getElementById('mes-faturas-wrap').style.display = state.cards.length ? 'block' : 'none';
+  document.getElementById('mes-secondary-grid').style.gridTemplateColumns = state.cards.length ? '' : '1fr';
   if(state.cards.length) renderFaturasInto(mm, 'mes-faturas-panel', currentMonth);
+  renderMethodBreakdown(mm, 'mes-method-panel');
 
   renderEntryTable('tbl-income', mm.income, 'income');
   renderEntryTable('tbl-fixed', mm.fixed, 'fixed');
