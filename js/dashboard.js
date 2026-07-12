@@ -323,6 +323,7 @@ function payInvoice(cardId, monthKey){
   const card = state.cards.find(c=>c.id===cardId);
   const snapshot = entries.map(e=>({ e, status:e.status, paidAmount:e.paidAmount }));
   entries.forEach(e=>{ e.status='Pago'; e.paidAmount = e.amount; });
+  logAudit('Status', `Fatura de "${card?card.name:'cartão'}" paga (${entries.length} lançamento(s)) em ${monthLabel(monthKey)}.`);
   save();
   renderDashboard();
   renderMes();

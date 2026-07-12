@@ -1,6 +1,26 @@
 /* ================= Backup ================= */
+const BACKUP_FREQ_DAYS = { daily:1, weekly:7, biweekly:15, monthly:30 };
+function setBackupFrequency(freq){
+  state.meta.backupFrequency = freq;
+  save();
+  renderBackupFreqToggle();
+}
+function renderBackupFreqToggle(){
+  const toggle = document.getElementById('backup-freq-toggle');
+  if(!toggle) return;
+  const freq = state.meta.backupFrequency || 'off';
+  toggle.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.freq===freq));
+}
+function checkAutoBackup(){
+  const days = BACKUP_FREQ_DAYS[state.meta.backupFrequency];
+  if(!days) return;
+  const last = state.meta.lastExported;
+  const daysSince = last ? (Date.now()-last)/86400000 : Infinity;
+  if(daysSince >= days) exportBackup();
+}
 function saveSaldoInicial(){
   state.meta.startingBalance = num(document.getElementById('saldo-inicial').value);
+  logAudit('Edição', `Saldo inicial alterado para ${fmt.format(state.meta.startingBalance)}.`);
   save(); renderAll();
 }
 function fmtDateTime(ts){
@@ -60,6 +80,7 @@ function importBackup(ev){
     const backup = JSON.parse(JSON.stringify(state)); // cópia de segurança em memória
     try{
       state = Object.assign(defaultState(), parsed);
+      logAudit('Importação', `Backup importado (arquivo "${file.name}").`);
       save(); renderAll();
       alert('Backup importado com sucesso.');
     }catch(e){
@@ -74,6 +95,7 @@ function importBackup(ev){
 function resetAll(){
   if(!confirm('Isso vai apagar TODOS os dados salvos — neste navegador e na nuvem. Sua conta de login continua existindo. Tem certeza?')) return;
   state = defaultState();
+  logAudit('Exclusão', 'Todos os dados foram apagados (Zona de risco).');
   save(); renderAll();
 }
 async function handleDeleteAccount(){
@@ -100,6 +122,7 @@ async function handleDeleteAccount(){
   }
 }
 function renderBackupInfo(){
+  renderBackupFreqToggle();
   document.getElementById('saldo-inicial').value = state.meta.startingBalance || 0;
   document.getElementById('info-months').textContent = Object.keys(state.months).length;
   document.getElementById('info-commits').textContent = state.commitments.length;

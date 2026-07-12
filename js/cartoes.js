@@ -13,12 +13,14 @@ function addCard(){
   state.cards.push(c);
   ['card-name','card-bank','card-closing','card-due','card-limit'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('card-color').value = '#0E7A5F';
+  logAudit('Registro', `Cartão "${name}" cadastrado.`);
   save(); renderCartoes(); refreshCardSelects();
 }
 function removeCard(id){
   const idx = state.cards.findIndex(c=>c.id===id);
   if(idx===-1) return;
   const [removed] = state.cards.splice(idx,1);
+  logAudit('Exclusão', `Cartão "${removed.name}" removido.`);
   save(); renderCartoes(); refreshCardSelects(); renderDashboard();
   showUndoToast(`Cartão "${removed.name}" removido. Lançamentos que usavam ele continuam existindo.`, () => {
     state.cards.splice(idx,0,removed);
@@ -60,6 +62,7 @@ function saveCardEdit(id){
   c.limit = num(document.getElementById('ecm2-limit').value)||null;
   c.color = document.getElementById('ecm2-color').value || c.color;
   closeModal();
+  logAudit('Edição', `Cartão "${c.name}" editado.`);
   save(); renderCartoes(); refreshCardSelects(); renderDashboard();
 }
 function renderCartoes(){

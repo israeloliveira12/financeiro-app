@@ -6,7 +6,12 @@ let currentMonth = todayKey();
 let currentYear = keyParts(todayKey()).y;
 
 function defaultState(){
-  return { meta:{startingBalance:0}, cards:[], commitments:[], months:{}, projections:{} };
+  return { meta:{startingBalance:0}, cards:[], commitments:[], months:{}, projections:{}, auditLog:[] };
+}
+function logAudit(action, description){
+  if(!state.auditLog) state.auditLog = [];
+  state.auditLog.unshift({ id:uid(), ts:Date.now(), action, description });
+  if(state.auditLog.length > 2000) state.auditLog.length = 2000;
 }
 function localKey(){
   // Cada conta tem sua própria chave no localStorage — evita que um aparelho

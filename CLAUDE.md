@@ -17,8 +17,10 @@ Este arquivo existe para dar contexto rápido em qualquer sessão nova do Claude
   - `mes.js` — tudo do "Mensal" (lançamentos, tabelas, abas de seção)
   - `compromissos.js` — CRUD de compromissos + modal de gerenciar + toast de desfazer (`showUndoToast`)
   - `cartoes.js` — CRUD de cartões
-  - `backup.js` — exportar/importar/resetar/excluir conta
-  - `main.js` — **carrega por último**: wiring de navegação entre abas e o boot inicial (`populateStaticSelects`, `bootUI`, `boot()`, `supa.auth.onAuthStateChange`). Só funciona por último porque chama funções definidas nos outros arquivos — os demais arquivos podem carregar em qualquer ordem entre si, já que tudo que fazem no top-level é ou definição de função (hoisted) ou `addEventListener`/`onclick` (só executa depois, quando tudo já carregou).
+  - `backup.js` — exportar/importar/resetar/excluir conta, backup automático agendado
+  - `auditoria.js` — `renderAuditoria()`, tela de histórico de ações (`state.auditLog`)
+  - `relatorios.js` — `collectAllData()` + exportação em Excel (`exportExcel`, via SheetJS), CSV (`exportCSV`) e PDF (`exportPDF`, via impressão do navegador)
+  - `main.js` — **carrega por último**: wiring de navegação entre abas (`switchView`), menu mobile "Mais" (`showMoreMenu`) e o boot inicial (`populateStaticSelects`, `bootUI`, `boot()`, `supa.auth.onAuthStateChange`). Só funciona por último porque chama funções definidas nos outros arquivos — os demais arquivos podem carregar em qualquer ordem entre si, já que tudo que fazem no top-level é ou definição de função (hoisted) ou `addEventListener`/`onclick` (só executa depois, quando tudo já carregou).
 - `manifest.json` — permite instalar como PWA no celular
 - `sw.js` — service worker; `FILES_TO_CACHE` precisa ser atualizado se algum arquivo novo em `js/` for criado
 - `icon-192.png`, `icon-512.png` — ícones do PWA
@@ -42,7 +44,7 @@ Este arquivo existe para dar contexto rápido em qualquer sessão nova do Claude
 
 ```
 state = {
-  meta: { startingBalance, lastModified, lastExported },
+  meta: { startingBalance, lastModified, lastExported, backupFrequency },  // backupFrequency: 'off'|'daily'|'weekly'|'biweekly'|'monthly'
   cards: [ {id, name, bank, closingDay, dueDay, color, limit} ],  // limit é opcional
   commitments: [ {
     id, desc, category: 'income'|'fixed'|'variable', amount,
@@ -59,7 +61,8 @@ state = {
       variable: [ ...mesma forma que fixed... ]
     }
   },
-  projections: { 'YYYY-MM': number }   // renda esperada editada manualmente no dashboard
+  projections: { 'YYYY-MM': number },  // renda esperada editada manualmente no dashboard
+  auditLog: [ {id, ts, action, description} ]  // histórico de ações, mais recente primeiro, capado em 2000 itens
 }
 ```
 
@@ -85,6 +88,10 @@ Status possíveis: `Pendente`, `Lançado` (só cartão, entre Pendente e Pago), 
 - **Painel "Crédito disponível" na Visão Geral** (`renderCardsSummary()`) é um resumo consolidado (soma de todos os limites vs. `cardLimitUsage()` de todos os cartões) + uma lista compacta de % usado por cartão (nome + barra, sem os números de Lançado/Pendente/Previsto) — diferente do painel "Faturas dos cartões" do "Mensal", que mostra o detalhe completo. A lista por cartão existe também pra equilibrar visualmente com o painel "Saúde financeira" ao lado (que tem a rosca) — sem ela, o painel ficava raso e desalinhado na `.grid2`.
 - **"Saúde financeira do mês" tem uma rosca (Fixas/Variáveis/Sobra)** via `donutSVG()` (SVG com `stroke-dasharray`/`stroke-dashoffset`, sem biblioteca) — só aparece se houver receita ou despesa lançada no mês (sem isso não dá pra calcular proporção).
 - **`.card`/`.panel` têm uma sombra bem sutil** (`box-shadow` leve) — decisão consciente de manter minimalista, não exagerar na elevação.
+- **Auditoria** (`js/auditoria.js`, aba entre "Cartões" e "Configurações"): `logAudit(action, description)` (em `state.js`) é chamado logo antes de cada `save()` relevante — lançamentos, mudanças de status, edições, exclusões, registros de compromisso/cartão, importação de backup. Grava em `state.auditLog` (mais recente primeiro via `unshift`, capado em 2000 itens pra não inflar o JSON sincronizado indefinidamente). A tela (`renderAuditoria()`) segue o mesmo padrão `.table-scroll` das outras tabelas. Cada tipo de ação (`Lançamento`/`Registro`/`Edição`/`Status`/`Exclusão`/`Importação`) reaproveita as cores dos `.badge` já existentes (`AUDIT_BADGE_CLASS` em `auditoria.js`), com uma cor nova (`.badge.excluido`, vermelho) adicionada só pra exclusões. **Se criar uma nova função que muda dados do usuário, adicionar `logAudit()` nela também** (chamar sempre logo antes do `save()` correspondente).
+- **Menu mobile "Mais"**: a barra inferior (`.mobile-tabbar`) só tem espaço confortável pra 4-5 ícones, então mostra só Geral/Mensal/Compr./Cartões + um botão "Mais" (`showMoreMenu()`, em `main.js`) que abre um modal (reaproveita `.modal-overlay`/`.modal-box`) listando os itens que não couberam (hoje: Auditoria e Configurações), definidos em `MOBILE_OVERFLOW_ITEMS`. O desktop (sidebar) não usa esse conceito — sempre mostrou todos os itens direto. A navegação de aba foi refatorada pra uma função única `switchView(view)` (em `main.js`), usada tanto pelo listener de clique dos botões `[data-view]` quanto pelos itens do modal "Mais" — evita duplicar a lógica de troca de view. **Se adicionar uma nova aba no futuro**, ela entra na sidebar normalmente e, se não couber na barra mobile, entra em `MOBILE_OVERFLOW_ITEMS` (não crie um botão `data-view` novo dentro do `.mobile-tabbar` sem antes considerar se cabe).
+- **Backup automático** (`state.meta.backupFrequency`, seletor em Configurações): reaproveita o mesmo timestamp `state.meta.lastExported` que já existia pro aviso "vale exportar" — não criei um timestamp paralelo, então um export manual também "conta" e adia o próximo automático. `checkAutoBackup()` (`backup.js`) roda uma vez no `bootUI()` (depois do login) e, se passou o intervalo escolhido (1/7/15/30 dias), chama `exportBackup()` de novo, disparando o download `.json` sozinho. **Limitação conhecida e já avisada ao usuário**: navegadores podem bloquear downloads automáticos não amarrados a um clique direto do usuário — se isso acontecer, o backup manual continua funcionando normalmente como alternativa.
+- **Exportação Excel/CSV/PDF** (`js/relatorios.js`): `collectAllData()` centraliza a coleta (todos os meses/lançamentos, compromissos, cartões) e é reaproveitada pelas três exportações — evita triplicar a lógica de "juntar tudo". Excel usa a biblioteca **SheetJS** carregada via CDN (`<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/...">`, mesmo padrão do `supabase-js`: script externo, sem build) e gera `.xlsx` com 3 abas (Lançamentos/Compromissos/Cartões). CSV é gerado na mão (sem biblioteca), com BOM UTF-8 pro Excel abrir acentos corretamente. PDF **não usa nenhuma biblioteca** — `exportPDF()` monta HTML dentro de `#print-report` (elemento escondido por padrão, `display:none` via `.print-only`) e chama `window.print()`; o CSS em `@media print` (final do `style.css`) esconde todo o resto da página (`body * { visibility:hidden }`) e mostra só o relatório, com tipografia própria — o usuário escolhe "Salvar como PDF" no diálogo nativo do navegador. Essa foi uma escolha deliberada do usuário (controle total do design, zero dependência nova) em vez de uma lib tipo jsPDF.
 
 ## Limitações conhecidas (decisões conscientes, não bugs)
 

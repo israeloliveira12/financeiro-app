@@ -28,12 +28,15 @@ function addCommitment(){
   }
   state.commitments.push(c);
   ['cm-desc','cm-amount'].forEach(id=>document.getElementById(id).value='');
+  const catLabel = {fixed:'despesa fixa',variable:'despesa variável',income:'receita'}[category];
+  logAudit('Registro', `Compromisso "${desc}" cadastrado (${catLabel}, ${fmt.format(amount)}).`);
   save(); renderCompromissos(); renderDashboard();
 }
 function removeCommitment(id){
   const idx = state.commitments.findIndex(c=>c.id===id);
   if(idx===-1) return;
   const [removed] = state.commitments.splice(idx,1);
+  logAudit('Exclusão', `Compromisso "${removed.desc}" removido.`);
   save(); renderCompromissos(); renderMes(); renderDashboard();
   showUndoToast(`"${removed.desc}" removido dos compromissos. Lançamentos já criados continuam existindo.`, () => {
     state.commitments.splice(idx,0,removed);
@@ -163,6 +166,7 @@ function saveBasicCommitment(id){
     const totalEl = document.getElementById('mm-total');
     if(totalEl) c.total = parseInt(totalEl.value)||c.total;
   }
+  logAudit('Edição', `Compromisso "${c.desc}" editado.`);
   save(); renderCompromissos(); renderMes(); renderDashboard();
   openManageModal(id);
 }
@@ -184,6 +188,7 @@ function applyBulkAmount(id){
       if(info){ e.amount = info.amount; e.desc = info.label; }
     });
   });
+  logAudit('Edição', `Valor de "${c.desc}" alterado para ${fmt.format(newAmount)} a partir de ${monthLabel(fromMonth)}.`);
   save(); closeModal(); renderCompromissos(); renderMes(); renderDashboard();
 }
 function stopCommitmentFrom(id){
@@ -201,12 +206,14 @@ function stopCommitmentFrom(id){
       mm[cat] = mm[cat].filter(e=> !(e.commitmentId===id && e.status==='Pendente'));
     });
   });
+  logAudit('Edição', `Compromisso "${c.desc}" encerrado a partir de ${monthLabel(stopFrom)}.`);
   save(); closeModal(); renderCompromissos(); renderMes(); renderDashboard();
 }
 function reactivateCommitment(id){
   const c = state.commitments.find(x=>x.id===id);
   if(!c) return;
   delete c.endMonth;
+  logAudit('Edição', `Compromisso "${c.desc}" reativado.`);
   save(); closeModal(); renderCompromissos(); renderMes(); renderDashboard();
 }
 function removeSkip(id, monthKey){

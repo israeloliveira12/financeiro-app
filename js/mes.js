@@ -137,6 +137,7 @@ function saveEntryEdit(kind, id){
   }
 
   closeModal();
+  logAudit('Edição', `Lançamento "${e.desc}" editado${moved ? ' e movido para '+monthLabel(targetMonth) : ''}.`);
   save();
   renderMes();
   renderDashboard();
@@ -147,9 +148,11 @@ function cycleStatus(kind, id){
   const e = mm[kind].find(x=>x.id===id);
   if(!e) return;
   const ns = nextStatus(e,kind);
+  const oldStatus = e.status;
   e.status = ns;
   if(ns==='Pago' || ns==='Recebido') e.paidAmount = e.amount;
   if(ns==='Pendente') e.paidAmount = 0;
+  logAudit('Status', `"${e.desc}" mudou de ${oldStatus} para ${ns} em ${monthLabel(currentMonth)}.`);
   save(); renderMes(); renderDashboard();
 }
 function deleteEntry(kind, id){
@@ -171,6 +174,7 @@ function deleteEntry(kind, id){
     }
   }
   mm[kind] = mm[kind].filter(x=>x.id!==id);
+  logAudit('Exclusão', `"${e.desc}" excluído de ${monthLabel(monthAtDelete)}.`);
   save(); renderMes(); renderCompromissos(); renderDashboard();
 
   const msg = commit
@@ -192,6 +196,7 @@ function addIncome(){
   const mm = ensureMonth(currentMonth);
   mm.income.push({id:uid(), desc, amount, status:'Pendente'});
   document.getElementById('inc-desc').value=''; document.getElementById('inc-amount').value='';
+  logAudit('Lançamento', `Receita "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}.`);
   save(); renderMes();
 }
 function addManual(kind){
@@ -205,6 +210,8 @@ function addManual(kind){
   mm[kind].push({id:uid(), desc, amount, method, cardId, status:'Pendente'});
   document.getElementById(p+'-desc').value='';
   document.getElementById(p+'-amount').value='';
+  const kindLabel = kind==='fixed' ? 'Despesa fixa' : 'Despesa variável';
+  logAudit('Lançamento', `${kindLabel} "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}.`);
   save(); renderMes();
 }
 function toggleCardSelect(prefix){

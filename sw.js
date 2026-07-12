@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financeiro-cache-v3';
+const CACHE_NAME = 'financeiro-cache-v4';
 const FILES_TO_CACHE = [
   './',
   './index.html',
@@ -15,6 +15,8 @@ const FILES_TO_CACHE = [
   './js/compromissos.js',
   './js/cartoes.js',
   './js/backup.js',
+  './js/auditoria.js',
+  './js/relatorios.js',
   './js/main.js'
 ];
 
