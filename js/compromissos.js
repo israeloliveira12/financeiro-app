@@ -29,14 +29,17 @@ function addCommitment(){
   state.commitments.push(c);
   ['cm-desc','cm-amount'].forEach(id=>document.getElementById(id).value='');
   const catLabel = {fixed:'despesa fixa',variable:'despesa variável',income:'receita'}[category];
-  logAudit('Registro', `Compromisso "${desc}" cadastrado (${catLabel}, ${fmt.format(amount)}).`);
+  const typeLabel = type==='installment' ? `parcelado ${c.startNum}/${c.total}` : 'mensal contínuo';
+  const methodInfo = category!=='income' ? `, via ${c.method}${c.cardId?' ('+cardName(c.cardId)+')':''}` : '';
+  logAudit('Registro', `Compromisso "${desc}" cadastrado (${catLabel}, ${typeLabel}, ${fmt.format(amount)}${methodInfo}, a partir de ${monthLabel(c.start)}).`);
   save(); renderCompromissos(); renderDashboard();
 }
 function removeCommitment(id){
   const idx = state.commitments.findIndex(c=>c.id===id);
   if(idx===-1) return;
   const [removed] = state.commitments.splice(idx,1);
-  logAudit('Exclusão', `Compromisso "${removed.desc}" removido.`);
+  const catLabel = {fixed:'despesa fixa',variable:'despesa variável',income:'receita'}[removed.category];
+  logAudit('Exclusão', `Compromisso "${removed.desc}" (${catLabel}, ${fmt.format(removed.amount)}) removido.`);
   save(); renderCompromissos(); renderMes(); renderDashboard();
   showUndoToast(`"${removed.desc}" removido dos compromissos. Lançamentos já criados continuam existindo.`, () => {
     state.commitments.splice(idx,0,removed);
@@ -157,6 +160,7 @@ function openManageModal(id){
 function saveBasicCommitment(id){
   const c = state.commitments.find(x=>x.id===id);
   if(!c) return;
+  const before = { desc:c.desc, method:c.method, cardId:c.cardId, total:c.total };
   c.desc = document.getElementById('mm-desc').value.trim() || c.desc;
   if(c.category!=='income'){
     c.method = document.getElementById('mm-method').value;
@@ -166,7 +170,13 @@ function saveBasicCommitment(id){
     const totalEl = document.getElementById('mm-total');
     if(totalEl) c.total = parseInt(totalEl.value)||c.total;
   }
-  logAudit('Edição', `Compromisso "${c.desc}" editado.`);
+  const diff = auditDiff([
+    ['Descrição', before.desc, c.desc],
+    c.category!=='income' ? ['Método', before.method||'—', c.method||'—'] : null,
+    c.category!=='income' ? ['Cartão', before.cardId?cardName(before.cardId):'—', c.cardId?cardName(c.cardId):'—'] : null,
+    c.type==='installment' ? ['Total de parcelas', before.total, c.total] : null,
+  ]);
+  logAudit('Edição', `Compromisso "${c.desc}" editado${diff ? ' — '+diff : ''}.`);
   save(); renderCompromissos(); renderMes(); renderDashboard();
   openManageModal(id);
 }
@@ -176,6 +186,7 @@ function applyBulkAmount(id){
   const fromMonth = document.getElementById('bulk-month').value;
   const newAmount = num(document.getElementById('bulk-amount').value);
   if(!fromMonth || !newAmount) return;
+  const oldAmount = c.amount;
   c.amount = newAmount;
   Object.keys(state.months).forEach(k=>{
     if(monthDiff(k,fromMonth) > 0) return; // mês anterior ao início da alteração: preserva
@@ -188,7 +199,7 @@ function applyBulkAmount(id){
       if(info){ e.amount = info.amount; e.desc = info.label; }
     });
   });
-  logAudit('Edição', `Valor de "${c.desc}" alterado para ${fmt.format(newAmount)} a partir de ${monthLabel(fromMonth)}.`);
+  logAudit('Edição', `Valor de "${c.desc}" alterado de ${fmt.format(oldAmount)} para ${fmt.format(newAmount)} a partir de ${monthLabel(fromMonth)}.`);
   save(); closeModal(); renderCompromissos(); renderMes(); renderDashboard();
 }
 function stopCommitmentFrom(id){

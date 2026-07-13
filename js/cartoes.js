@@ -13,14 +13,15 @@ function addCard(){
   state.cards.push(c);
   ['card-name','card-bank','card-closing','card-due','card-limit'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('card-color').value = '#0E7A5F';
-  logAudit('Registro', `Cartão "${name}" cadastrado.`);
+  const details = [c.bank?`banco ${c.bank}`:null, c.closingDay?`fecha dia ${c.closingDay}`:null, c.dueDay?`vence dia ${c.dueDay}`:null, c.limit?`limite ${fmt.format(c.limit)}`:null].filter(Boolean).join(', ');
+  logAudit('Registro', `Cartão "${name}" cadastrado${details?' ('+details+')':''}.`);
   save(); renderCartoes(); refreshCardSelects();
 }
 function removeCard(id){
   const idx = state.cards.findIndex(c=>c.id===id);
   if(idx===-1) return;
   const [removed] = state.cards.splice(idx,1);
-  logAudit('Exclusão', `Cartão "${removed.name}" removido.`);
+  logAudit('Exclusão', `Cartão "${removed.name}"${removed.bank?` (${removed.bank})`:''} removido.`);
   save(); renderCartoes(); refreshCardSelects(); renderDashboard();
   showUndoToast(`Cartão "${removed.name}" removido. Lançamentos que usavam ele continuam existindo.`, () => {
     state.cards.splice(idx,0,removed);
@@ -55,6 +56,7 @@ function openCardEditModal(id){
 function saveCardEdit(id){
   const c = state.cards.find(x=>x.id===id);
   if(!c) return;
+  const before = { name:c.name, bank:c.bank, closingDay:c.closingDay, dueDay:c.dueDay, limit:c.limit };
   c.name = document.getElementById('ecm2-name').value.trim() || c.name;
   c.bank = document.getElementById('ecm2-bank').value.trim();
   c.closingDay = parseInt(document.getElementById('ecm2-closing').value)||null;
@@ -62,7 +64,14 @@ function saveCardEdit(id){
   c.limit = num(document.getElementById('ecm2-limit').value)||null;
   c.color = document.getElementById('ecm2-color').value || c.color;
   closeModal();
-  logAudit('Edição', `Cartão "${c.name}" editado.`);
+  const diff = auditDiff([
+    ['Nome', before.name, c.name],
+    ['Banco', before.bank||'—', c.bank||'—'],
+    ['Fecha dia', before.closingDay||'—', c.closingDay||'—'],
+    ['Vence dia', before.dueDay||'—', c.dueDay||'—'],
+    ['Limite', before.limit?fmt.format(before.limit):'—', c.limit?fmt.format(c.limit):'—'],
+  ]);
+  logAudit('Edição', `Cartão "${c.name}" editado${diff ? ' — '+diff : ''}.`);
   save(); renderCartoes(); refreshCardSelects(); renderDashboard();
 }
 function renderCartoes(){

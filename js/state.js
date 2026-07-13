@@ -13,6 +13,13 @@ function logAudit(action, description){
   state.auditLog.unshift({ id:uid(), ts:Date.now(), action, description });
   if(state.auditLog.length > 2000) state.auditLog.length = 2000;
 }
+// Monta "campo: antes → depois" só para os pares que realmente mudaram —
+// usado nas mensagens de edição da Auditoria para mostrar o que de fato mudou.
+function auditDiff(pairs){
+  const changed = pairs.filter(p=>p && String(p[1])!==String(p[2]));
+  if(!changed.length) return '';
+  return changed.map(([label,oldV,newV])=>`${label}: ${oldV} → ${newV}`).join('; ');
+}
 function localKey(){
   // Cada conta tem sua própria chave no localStorage — evita que um aparelho
   // compartilhado misture o cache local de duas contas diferentes.

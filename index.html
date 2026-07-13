@@ -287,6 +287,17 @@
       <h1>Auditoria</h1>
       <p class="subtitle">Registro de tudo que foi lançado, editado ou excluído no sistema, do mais recente para o mais antigo.</p>
       <div class="panel">
+        <div class="audit-controls">
+          <label for="audit-limit-select">Mostrar</label>
+          <select id="audit-limit-select" onchange="setAuditLimit(this.value)">
+            <option value="15">15 mais recentes</option>
+            <option value="30">30 mais recentes</option>
+            <option value="50">50 mais recentes</option>
+            <option value="100">100 mais recentes</option>
+            <option value="all">Todos</option>
+          </select>
+          <span class="small" id="audit-count-info"></span>
+        </div>
         <div class="table-scroll">
         <table>
           <thead><tr><th>Quando</th><th>Ação</th><th>Descrição</th></tr></thead>

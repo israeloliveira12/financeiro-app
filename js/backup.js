@@ -19,8 +19,9 @@ function checkAutoBackup(){
   if(daysSince >= days) exportBackup();
 }
 function saveSaldoInicial(){
+  const oldVal = state.meta.startingBalance || 0;
   state.meta.startingBalance = num(document.getElementById('saldo-inicial').value);
-  logAudit('Edição', `Saldo inicial alterado para ${fmt.format(state.meta.startingBalance)}.`);
+  logAudit('Edição', `Saldo inicial alterado de ${fmt.format(oldVal)} para ${fmt.format(state.meta.startingBalance)}.`);
   save(); renderAll();
 }
 function fmtDateTime(ts){

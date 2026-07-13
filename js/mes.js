@@ -100,6 +100,7 @@ function saveEntryEdit(kind, id){
   const mm = ensureMonth(currentMonth);
   const e = mm[kind].find(x=>x.id===id);
   if(!e) return;
+  const before = { desc:e.desc, amount:e.amount, method:e.method, cardId:e.cardId, paidAmount:e.paidAmount||0, status:e.status };
   e.desc = document.getElementById('em-desc').value.trim() || e.desc;
   e.amount = num(document.getElementById('em-amount').value);
   if(kind!=='income'){
@@ -137,7 +138,17 @@ function saveEntryEdit(kind, id){
   }
 
   closeModal();
-  logAudit('Edição', `Lançamento "${e.desc}" editado${moved ? ' e movido para '+monthLabel(targetMonth) : ''}.`);
+  const paidLabel = kind==='income' ? 'Recebido' : 'Pago';
+  const diff = auditDiff([
+    ['Descrição', before.desc, e.desc],
+    ['Valor', fmt.format(before.amount), fmt.format(e.amount)],
+    kind!=='income' ? ['Método', before.method||'—', e.method||'—'] : null,
+    kind!=='income' ? ['Cartão', before.cardId?cardName(before.cardId):'—', e.cardId?cardName(e.cardId):'—'] : null,
+    [paidLabel, fmt.format(before.paidAmount), fmt.format(e.paidAmount||0)],
+    ['Status', before.status, e.status],
+  ]);
+  const movedInfo = moved ? ` Movido para ${monthLabel(targetMonth)}.` : '';
+  logAudit('Edição', `Lançamento "${e.desc}" editado em ${monthLabel(currentMonth)}${diff ? ' — '+diff : ''}.${movedInfo}`);
   save();
   renderMes();
   renderDashboard();
@@ -174,7 +185,8 @@ function deleteEntry(kind, id){
     }
   }
   mm[kind] = mm[kind].filter(x=>x.id!==id);
-  logAudit('Exclusão', `"${e.desc}" excluído de ${monthLabel(monthAtDelete)}.`);
+  const kindLabel = kind==='income' ? 'Receita' : (kind==='fixed' ? 'Despesa fixa' : 'Despesa variável');
+  logAudit('Exclusão', `${kindLabel} "${e.desc}" (${fmt.format(e.amount)}, status ${e.status}) excluída de ${monthLabel(monthAtDelete)}.`);
   save(); renderMes(); renderCompromissos(); renderDashboard();
 
   const msg = commit
@@ -196,7 +208,7 @@ function addIncome(){
   const mm = ensureMonth(currentMonth);
   mm.income.push({id:uid(), desc, amount, status:'Pendente'});
   document.getElementById('inc-desc').value=''; document.getElementById('inc-amount').value='';
-  logAudit('Lançamento', `Receita "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}.`);
+  logAudit('Lançamento', `Receita "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}, status Pendente.`);
   save(); renderMes();
 }
 function addManual(kind){
@@ -211,7 +223,8 @@ function addManual(kind){
   document.getElementById(p+'-desc').value='';
   document.getElementById(p+'-amount').value='';
   const kindLabel = kind==='fixed' ? 'Despesa fixa' : 'Despesa variável';
-  logAudit('Lançamento', `${kindLabel} "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}.`);
+  const methodInfo = method ? ` via ${method}${method==='Cartão de Crédito' && cardId ? ' ('+cardName(cardId)+')' : ''}` : '';
+  logAudit('Lançamento', `${kindLabel} "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}${methodInfo}, status Pendente.`);
   save(); renderMes();
 }
 function toggleCardSelect(prefix){
