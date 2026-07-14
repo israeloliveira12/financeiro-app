@@ -123,12 +123,6 @@
           <div id="chart-saldo"></div>
         </div>
       </div>
-
-      <div class="panel" id="dash-timeline-wrap">
-        <h2>Comprometido x renda esperada — próximos 6 meses</h2>
-        <p class="panel-hint">Edite a "renda esperada" de cada mês para calibrar. Salários cadastrados como compromisso já entram automaticamente.</p>
-        <div class="timeline" id="dash-timeline"></div>
-      </div>
     </div>
 
     <!-- MES -->
@@ -288,14 +282,21 @@
       <p class="subtitle">Registro de tudo que foi lançado, editado ou excluído no sistema, do mais recente para o mais antigo.</p>
       <div class="panel">
         <div class="audit-controls">
-          <label for="audit-limit-select">Mostrar</label>
-          <select id="audit-limit-select" onchange="setAuditLimit(this.value)">
-            <option value="15">15 mais recentes</option>
-            <option value="30">30 mais recentes</option>
-            <option value="50">50 mais recentes</option>
-            <option value="100">100 mais recentes</option>
-            <option value="all">Todos</option>
-          </select>
+          <div class="audit-control-field">
+            <label for="audit-limit-select">Mostrar</label>
+            <select id="audit-limit-select" onchange="setAuditLimit(this.value)">
+              <option value="15">15 mais recentes</option>
+              <option value="30">30 mais recentes</option>
+              <option value="50">50 mais recentes</option>
+              <option value="100">100 mais recentes</option>
+              <option value="all">Todos</option>
+            </select>
+          </div>
+          <div class="audit-control-field">
+            <label for="audit-date-filter">Data específica</label>
+            <input type="date" id="audit-date-filter" onchange="setAuditDateFilter(this.value)">
+          </div>
+          <button class="btn secondary" id="audit-clear-date-btn" onclick="clearAuditDateFilter()" style="display:none;">Limpar data</button>
           <span class="small" id="audit-count-info"></span>
         </div>
         <div class="table-scroll">
@@ -338,21 +339,28 @@
       </div>
 
       <div class="panel">
-        <h2>Backup e Exportação de Dados</h2>
-        <p class="panel-hint">Baixe um backup completo (.json, pode ser reimportado) ou exporte seus dados em Excel, CSV ou PDF.</p>
+        <h2>Backup e exportação de dados</h2>
+        <p class="panel-hint">O backup baixa dois arquivos com todos os dados do sistema (cartões, compromissos, lançamentos, faturas) direto para este computador: um <strong>.json</strong> (dado bruto completo) e um <strong>.sql</strong> (pronto pra colar no SQL Editor do Supabase em caso de restauração).</p>
 
-        <h4 class="section-subhead">Backup automático</h4>
-        <p class="small">Escolha uma frequência e o sistema baixa um backup .json sozinho, na primeira vez que você abrir o app naquele período.</p>
-        <div class="mode-toggle freq-toggle" id="backup-freq-toggle">
-          <button data-freq="off" onclick="setBackupFrequency('off')">Desativado</button>
-          <button data-freq="daily" onclick="setBackupFrequency('daily')">Diário</button>
-          <button data-freq="weekly" onclick="setBackupFrequency('weekly')">Semanal</button>
-          <button data-freq="biweekly" onclick="setBackupFrequency('biweekly')">Quinzenal</button>
-          <button data-freq="monthly" onclick="setBackupFrequency('monthly')">Mensal</button>
+        <label class="switch" style="margin-top:14px;">
+          <input type="checkbox" id="backup-auto-toggle" onchange="setBackupAutoEnabled(this.checked)">
+          <span class="switch-track"><span class="switch-thumb"></span></span>
+          <span class="switch-label">Backup automático ao abrir o sistema</span>
+        </label>
+
+        <div class="field-block" style="margin-top:14px;">
+          <label for="backup-freq-select">Frequência</label>
+          <select id="backup-freq-select" onchange="setBackupFrequency(this.value)" style="max-width:280px;">
+            <option value="daily">Diário</option>
+            <option value="weekly">Semanal</option>
+            <option value="biweekly">Quinzenal</option>
+            <option value="monthly">Mensal</option>
+          </select>
         </div>
+        <p class="small" id="backup-freq-hint" style="margin-top:8px;"></p>
 
         <div class="backup-row">
-          <button class="btn" onclick="exportBackup()">Baixar backup (.json)</button>
+          <button class="btn" onclick="exportBackup()">Baixar backup (.json + .sql)</button>
           <label class="btn secondary" style="cursor:pointer;">Importar backup
             <input type="file" accept=".json" style="display:none" onchange="importBackup(event)">
           </label>

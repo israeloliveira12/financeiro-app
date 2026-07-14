@@ -2,6 +2,13 @@
 const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 const METHODS = ['Pix','Cartão de Crédito','Boleto','Transferência','Dinheiro','Débito automático','Outro'];
 const fmt = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'});
+// Formato compacto pra rótulos de valor dentro dos gráficos (espaço é curto ali) — ex: 1.234 -> "1,2k"
+function fmtCompact(v){
+  const n = num(v);
+  const abs = Math.abs(n);
+  if(abs>=1000) return (n/1000).toFixed(abs>=10000?0:1).replace('.',',') + 'k';
+  return Math.round(n).toString();
+}
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function todayKey(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 function keyParts(k){ const [y,m]=k.split('-').map(Number); return {y,m}; }

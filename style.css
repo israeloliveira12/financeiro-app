@@ -69,16 +69,9 @@ h1{font-size:22px;margin:0 0 4px;}
 .panel h2{font-size:15px;margin:0 0 4px;}
 .panel .panel-hint{font-weight:400;color:var(--ink-soft);font-size:12px;margin:0 0 14px;}
 
-.timeline{display:flex;flex-direction:column;gap:10px;}
-.tl-row{display:grid;grid-template-columns:74px 1fr 230px;gap:12px;align-items:center;font-size:13px;}
-.tl-month{font-weight:600;}
 .tl-bar-wrap{background:#EEF2F0;border-radius:6px;height:20px;position:relative;overflow:hidden;}
 .tl-bar{height:100%;background:var(--brand);border-radius:6px 0 0 6px;transition:width .2s;}
 .tl-bar.over{background:var(--bad);}
-.tl-nums{display:flex;gap:8px;font-family:var(--mono);font-size:12px;justify-content:flex-end;align-items:center;}
-.tl-nums input{width:74px;font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:6px;padding:3px 6px 3px 20px;text-align:right;}
-.rs-wrap{position:relative;display:inline-flex;}
-.rs-prefix{position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:10.5px;color:var(--ink-soft);pointer-events:none;}
 
 table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:auto;}
 th{text-align:left;color:var(--ink-soft);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:8px 7px;border-bottom:1px solid var(--line);}
@@ -148,8 +141,6 @@ button.btn.danger:hover{background:#9C362E;}
 .mode-toggle{display:inline-flex;flex-wrap:wrap;background:#E4E9E7;border-radius:9px;padding:3px;gap:2px;margin-bottom:20px;}
 .mode-toggle button{all:unset;cursor:pointer;padding:7px 18px;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink-soft);}
 .mode-toggle button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1);}
-.mode-toggle.freq-toggle{margin-bottom:12px;}
-.mode-toggle.freq-toggle button{padding:7px 13px;}
 .mes-section-toggle{display:none;}
 .section-subhead{margin:16px 0 4px;font-size:13px;}
 
@@ -171,9 +162,11 @@ button.btn.danger:hover{background:#9C362E;}
 
 .empty{color:var(--ink-soft);font-size:13px;font-style:italic;padding:10px 0;}
 
-.audit-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
-.audit-controls label{font-size:12.5px;color:var(--ink-soft);font-weight:600;}
-.audit-controls select{border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--ink);background:#fff;}
+.audit-controls{display:flex;align-items:end;flex-wrap:wrap;gap:14px;margin-bottom:14px;}
+.audit-control-field{display:flex;flex-direction:column;gap:4px;}
+.audit-controls label{font-size:10.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+.audit-controls select, .audit-controls input[type=date]{width:auto;flex:0 0 auto;border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--ink);background:#fff;}
+.audit-controls #audit-count-info{margin-left:auto;}
 
 .tag-commit{font-size:9.5px;background:#F0F3F1;color:var(--ink-soft);border-radius:5px;padding:1px 5px;display:inline-block;margin-top:3px;}
 .tag-card{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle;}
@@ -181,6 +174,15 @@ button.btn.danger:hover{background:#9C362E;}
 .backup-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
 .kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #F0F2F1;font-size:13.5px;gap:14px;}
 .kv:last-child{border-bottom:none;}
+
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;width:fit-content;}
+.switch input{position:absolute;opacity:0;width:1px;height:1px;}
+.switch-track{width:38px;height:22px;background:#DCE2DF;border-radius:20px;position:relative;transition:background .15s;flex-shrink:0;}
+.switch-thumb{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s;}
+.switch input:checked + .switch-track{background:var(--brand);}
+.switch input:checked + .switch-track .switch-thumb{transform:translateX(16px);}
+.switch input:focus-visible + .switch-track{outline:2px solid var(--brand);outline-offset:2px;}
+.switch-label{font-size:14px;font-weight:600;color:var(--ink);}
 
 .fatura-list{display:flex;flex-direction:column;container-type:inline-size;}
 .fatura-card{padding:14px 0;border-bottom:1px solid #F0F2F1;}

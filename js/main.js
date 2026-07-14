@@ -2,12 +2,18 @@
 // Cobre tanto os botões da sidebar (desktop) quanto a barra inferior (mobile) —
 // os dois conjuntos de botões ficam sincronizados, já que ambos existem no DOM
 // o tempo todo (só a visibilidade muda por CSS conforme o tamanho da tela).
+// Guarda a última aba visitada por conta, pra um F5 não jogar o usuário de
+// volta pra "Visão geral" no meio do que ele estava fazendo.
+function lastViewKey(){
+  return currentSession ? 'financeiro_lastView_' + currentSession.user.id : 'financeiro_lastView';
+}
 function switchView(view){
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
   const moreBtn = document.getElementById('mobile-more-btn');
   if(moreBtn) moreBtn.classList.toggle('active', MOBILE_OVERFLOW_ITEMS.some(it=>it.view===view));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+view).classList.add('active');
+  localStorage.setItem(lastViewKey(), view);
   renderAll();
 }
 document.querySelectorAll('[data-view]').forEach(btn=>{
@@ -60,7 +66,12 @@ function bootUI(){
   document.getElementById('cm-start-monthly').value = currentMonth;
   toggleCommitFields();
   onCommitCategoryChange();
-  renderAll();
+  const lastView = localStorage.getItem(lastViewKey());
+  if(lastView && lastView!=='dashboard' && document.getElementById('view-'+lastView)){
+    switchView(lastView); // já chama renderAll()
+  } else {
+    renderAll();
+  }
   checkAutoBackup();
 }
 

@@ -85,7 +85,6 @@ function renderDashboard(){
   renderDebtProgress();
   renderSaude(key,t);
   renderCardsSummary();
-  renderTimeline(key);
   renderAno();
 }
 
@@ -95,7 +94,6 @@ function setDashboardMode(mode){
   document.querySelectorAll('#dash-mode-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.mode===mode));
   document.getElementById('dash-mode-mes').style.display = mode==='mes' ? '' : 'none';
   document.getElementById('dash-mode-ano').style.display = mode==='ano' ? '' : 'none';
-  document.getElementById('dash-timeline-wrap').style.display = mode==='mes' ? '' : 'none';
 }
 
 function forecastWindow(){
@@ -132,6 +130,7 @@ function renderForecastChart(){
   const todayX = x(todayIdx).toFixed(1);
   const labels = pts.map((p,i)=>`<text x="${x(i).toFixed(1)}" y="${H-7}" font-size="9.3" fill="#5B6663" text-anchor="middle">${monthShort(p.key)}</text>`).join('');
   const dots = (field,color) => pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p[field]).toFixed(1)}" r="2.6" fill="${color}"/>`).join('');
+  const valueLabels = (field,color,dy) => pts.map((p,i)=> p[field]>0 ? `<text x="${x(i).toFixed(1)}" y="${(y(p[field])+dy).toFixed(1)}" font-size="8.5" fill="${color}" text-anchor="middle" font-weight="600">${fmtCompact(p[field])}</text>` : '').join('');
   const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
     ${grid}
     <line x1="${todayX}" y1="${padT}" x2="${todayX}" y2="${H-padB}" stroke="#DCE2DF" stroke-width="1.4" stroke-dasharray="3 3"/>
@@ -141,6 +140,7 @@ function renderForecastChart(){
     <path d="${pathFor('expenses',0,todayIdx)}" fill="none" stroke="#B8433A" stroke-width="2.2"/>
     <path d="${pathFor('expenses',todayIdx,n-1)}" fill="none" stroke="#B8433A" stroke-width="2.2" stroke-dasharray="5 4"/>
     ${dots('income','#0E7A5F')}${dots('expenses','#B8433A')}
+    ${valueLabels('income','#0E7A5F',-8)}${valueLabels('expenses','#B8433A',15)}
     ${labels}
   </svg>`;
   document.getElementById('chart-forecast').innerHTML = svg;
@@ -173,12 +173,17 @@ function renderSaldoTrendChart(){
   const todayX = x(todayIdx).toFixed(1);
   const labels = series.map((p,i)=>`<text x="${x(i).toFixed(1)}" y="${H-7}" font-size="9.3" fill="#5B6663" text-anchor="middle">${monthShort(p.key)}</text>`).join('');
   const areaPath = `M${x(0).toFixed(1)} ${y(0).toFixed(1)} ` + series.map((p,i)=>`L${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ') + ` L${x(n-1).toFixed(1)} ${y(0).toFixed(1)} Z`;
+  const valueLabels = series.map((p,i)=>{
+    const above = p.value>=0;
+    return `<text x="${x(i).toFixed(1)}" y="${(y(p.value)+(above?-8:15)).toFixed(1)}" font-size="8.5" fill="#0E7A5F" text-anchor="middle" font-weight="600">${fmtCompact(p.value)}</text>`;
+  }).join('');
   const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
     <path d="${areaPath}" fill="#0E7A5F" opacity="0.07"/>
     ${zeroLine}
     <line x1="${todayX}" y1="${padT}" x2="${todayX}" y2="${H-padB}" stroke="#DCE2DF" stroke-width="1.4" stroke-dasharray="3 3"/>
     <path d="${pathFor(0,todayIdx)}" fill="none" stroke="#0E7A5F" stroke-width="2.4"/>
     <path d="${pathFor(todayIdx,n-1)}" fill="none" stroke="#0E7A5F" stroke-width="2.4" stroke-dasharray="5 4"/>
+    ${valueLabels}
     ${labels}
   </svg>`;
   document.getElementById('chart-saldo').innerHTML = svg;
@@ -336,38 +341,6 @@ function payInvoice(cardId, monthKey){
   });
 }
 
-function renderTimeline(key){
-  let tl = '';
-  const previews = Array.from({length:6},(_,i)=>{
-    const k = addMonthsToKey(key,i);
-    return { k, committed: peekCommittedForMonth(k,'fixed') };
-  });
-  const maxCommitted = Math.max(1, ...previews.map(p=>p.committed));
-  previews.forEach(p=>{
-    const k = p.k;
-    const committed = p.committed;
-    let expected;
-    if(state.projections[k] !== undefined) expected = state.projections[k];
-    else if(state.months[k]) expected = sumEntries(state.months[k].income);
-    else expected = peekCommittedForMonth(k,'income');
-    const expectedNum = num(expected);
-    const base = expectedNum>0 ? expectedNum : maxCommitted;
-    const pct = Math.min(100, (committed/(base||1))*100);
-    const over = expectedNum>0 && committed>expectedNum;
-    const livre = expectedNum - committed;
-    tl += `<div class="tl-row">
-      <div class="tl-month">${monthShort(k)}</div>
-      <div class="tl-bar-wrap"><div class="tl-bar ${over?'over':''}" style="width:${Math.max(pct,3)}%"></div></div>
-      <div class="tl-nums">
-        <span title="Comprometido (fixo)">${fmt.format(committed)}</span>
-        <span class="rs-wrap"><span class="rs-prefix">R$</span><input type="number" step="0.01" value="${expected||''}" placeholder="renda esp." onchange="setProjection('${k}',this.value)"></span>
-        <span title="Livre estimado" style="color:${livre<0?'var(--bad)':'var(--brand)'};font-weight:600;">${expectedNum?fmt.format(livre):'—'}</span>
-      </div>
-    </div>`;
-  });
-  document.getElementById('dash-timeline').innerHTML = tl;
-}
-function setProjection(key,val){ state.projections[key] = num(val); save(); renderDashboard(); }
 
 function renderAno(){
   document.getElementById('ano-label').textContent = currentYear;
@@ -408,9 +381,12 @@ function renderAnoChart(data){
     const incX = gx + groupW*0.5 - barW - 1.5;
     const expX = gx + groupW*0.5 + 1.5;
     const incY = y(d.income), expY = y(d.expenses);
+    const incLabel = d.income>0 ? `<text x="${(incX+barW/2).toFixed(1)}" y="${(incY-4).toFixed(1)}" font-size="8" fill="#0E7A5F" text-anchor="middle" font-weight="600">${fmtCompact(d.income)}</text>` : '';
+    const expLabel = d.expenses>0 ? `<text x="${(expX+barW/2).toFixed(1)}" y="${(expY-4).toFixed(1)}" font-size="8" fill="#B8433A" text-anchor="middle" font-weight="600">${fmtCompact(d.expenses)}</text>` : '';
     return `
       <rect x="${incX.toFixed(1)}" y="${incY.toFixed(1)}" width="${barW.toFixed(1)}" height="${(baseY-incY).toFixed(1)}" rx="2" fill="#0E7A5F"/>
       <rect x="${expX.toFixed(1)}" y="${expY.toFixed(1)}" width="${barW.toFixed(1)}" height="${(baseY-expY).toFixed(1)}" rx="2" fill="#B8433A"/>
+      ${incLabel}${expLabel}
       <text x="${(gx+groupW/2).toFixed(1)}" y="${H-7}" font-size="9.5" fill="#5B6663" text-anchor="middle">${MONTH_NAMES[keyParts(d.key).m-1].slice(0,3)}</text>
     `;
   }).join('');

@@ -1,19 +1,34 @@
 /* ================= Backup ================= */
 const BACKUP_FREQ_DAYS = { daily:1, weekly:7, biweekly:15, monthly:30 };
+const BACKUP_FREQ_HINT = {
+  daily: 'Verificado 1x por dia, no primeiro acesso ao sistema — se já tiver rodado no período, não baixa de novo.',
+  weekly: 'Verificado 1x por semana, no primeiro acesso ao sistema — se já tiver rodado no período, não baixa de novo.',
+  biweekly: 'Verificado a cada 15 dias, no primeiro acesso ao sistema — se já tiver rodado no período, não baixa de novo.',
+  monthly: 'Verificado 1x por mês, no primeiro acesso ao sistema — se já tiver rodado no período, não baixa de novo.',
+};
+function setBackupAutoEnabled(enabled){
+  state.meta.backupAutoEnabled = enabled;
+  save();
+  renderBackupFreqControls();
+}
 function setBackupFrequency(freq){
   state.meta.backupFrequency = freq;
   save();
-  renderBackupFreqToggle();
+  renderBackupFreqControls();
 }
-function renderBackupFreqToggle(){
-  const toggle = document.getElementById('backup-freq-toggle');
+function renderBackupFreqControls(){
+  const toggle = document.getElementById('backup-auto-toggle');
   if(!toggle) return;
-  const freq = state.meta.backupFrequency || 'off';
-  toggle.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.freq===freq));
+  toggle.checked = !!state.meta.backupAutoEnabled;
+  const freq = BACKUP_FREQ_DAYS[state.meta.backupFrequency] ? state.meta.backupFrequency : 'daily';
+  const select = document.getElementById('backup-freq-select');
+  if(select) select.value = freq;
+  const hint = document.getElementById('backup-freq-hint');
+  if(hint) hint.textContent = BACKUP_FREQ_HINT[freq];
 }
 function checkAutoBackup(){
-  const days = BACKUP_FREQ_DAYS[state.meta.backupFrequency];
-  if(!days) return;
+  if(!state.meta.backupAutoEnabled) return;
+  const days = BACKUP_FREQ_DAYS[state.meta.backupFrequency] || 1;
   const last = state.meta.lastExported;
   const daysSince = last ? (Date.now()-last)/86400000 : Infinity;
   if(daysSince >= days) exportBackup();
@@ -29,13 +44,27 @@ function fmtDateTime(ts){
   const d = new Date(ts);
   return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 }
+function generateSQLBackup(){
+  const userId = currentSession ? currentSession.user.id : '00000000-0000-0000-0000-000000000000';
+  const json = JSON.stringify(state).replace(/'/g, "''");
+  const updatedAt = new Date(state.meta.lastModified || Date.now()).toISOString();
+  return `-- Backup do Meu Financeiro — gerado em ${fmtDateTime(Date.now())}
+-- Cole este script no SQL Editor do Supabase (o usuário já precisa existir em auth.users)
+-- pra restaurar os dados desta conta na tabela financeiro_state — ver supabase/schema.sql.
+
+insert into financeiro_state (user_id, data, updated_at)
+values (
+  '${userId}',
+  '${json}'::jsonb,
+  '${updatedAt}'
+)
+on conflict (user_id) do update set data = excluded.data, updated_at = excluded.updated_at;
+`;
+}
 function exportBackup(){
-  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
   const stamp = new Date().toISOString().slice(0,16).replace(/[-:T]/g,'').replace(/(\d{8})(\d{4})/,'$1-$2');
-  a.href = url; a.download = `backup-financeiro-${stamp}.json`;
-  a.click(); URL.revokeObjectURL(url);
+  downloadBlob(new Blob([JSON.stringify(state,null,2)], {type:'application/json'}), `backup-financeiro-${stamp}.json`);
+  downloadBlob(new Blob([generateSQLBackup()], {type:'application/sql'}), `backup-financeiro-${stamp}.sql`);
   state.meta.lastExported = Date.now();
   save();
   renderBackupInfo();
@@ -123,7 +152,7 @@ async function handleDeleteAccount(){
   }
 }
 function renderBackupInfo(){
-  renderBackupFreqToggle();
+  renderBackupFreqControls();
   document.getElementById('saldo-inicial').value = state.meta.startingBalance || 0;
   document.getElementById('info-months').textContent = Object.keys(state.months).length;
   document.getElementById('info-commits').textContent = state.commitments.length;
