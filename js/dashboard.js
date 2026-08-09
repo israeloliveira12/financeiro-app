@@ -110,102 +110,108 @@ function forecastWindow(){
   return { pts, todayIdx };
 }
 
+// Estiliza o eixo X pra destacar o mês de "hoje" (cor + negrito), já que o marcador
+// vertical tracejado do SVG antigo não existe mais sem o plugin de anotação.
+function todayTickOptions(todayIdx){
+  return {
+    color: (ctx)=> ctx.index===todayIdx ? '#0E7A5F' : '#5B6663',
+    font: (ctx)=> ({ size: 9.3, weight: ctx.index===todayIdx ? '700' : '400' }),
+  };
+}
+function dashAfterToday(todayIdx){
+  return (ctx)=> ctx.p0DataIndex >= todayIdx ? [5,4] : undefined;
+}
+let forecastChart = null;
 function renderForecastChart(){
   const { pts, todayIdx } = forecastWindow();
-  const n = pts.length;
-  const W=620,H=250,padL=40,padR=12,padT=18,padB=28;
-  const maxVal = Math.max(1, ...pts.map(p=>Math.max(p.income,p.expenses))) * 1.12;
-  const stepX = (W-padL-padR)/(n-1);
-  const x = i => padL + stepX*i;
-  const y = v => padT + (H-padT-padB) * (1 - v/maxVal);
-  const pathFor = (field, from, to) => {
-    let d='';
-    for(let i=from;i<=to;i++) d += (i===from?'M':'L') + x(i).toFixed(1)+' '+y(pts[i][field]).toFixed(1)+' ';
-    return d.trim();
+  const labels = pts.map(p=>monthShort(p.key));
+  const seriesFor = (field,color,align) => ({
+    label: field==='income' ? 'Receita' : 'Despesas',
+    data: pts.map(p=>p[field]),
+    borderColor: color, backgroundColor: color, pointBackgroundColor: color,
+    borderWidth: 2.2, pointRadius: 3, tension: 0,
+    segment: { borderDash: dashAfterToday(todayIdx) },
+    datalabels: {
+      display: (ctx)=> ctx.dataset.data[ctx.dataIndex] > 0,
+      color, anchor:'end', align, offset:4, font:{size:9,weight:'600'},
+      formatter: (v)=> fmtCompact(v),
+    }
+  });
+  const data = { labels, datasets: [ seriesFor('income','#0E7A5F','top'), seriesFor('expenses','#B8433A','bottom') ] };
+  const options = {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{ mode:'index', intersect:false },
+    plugins:{
+      legend:{display:false},
+      tooltip:{ callbacks:{ label:(ctx)=> `${ctx.dataset.label}: ${fmt.format(ctx.parsed.y)}` } },
+    },
+    scales:{
+      x:{ grid:{display:false}, ticks: todayTickOptions(todayIdx) },
+      y:{ grid:{color:'#EEF2F0'}, ticks:{display:false}, border:{display:false} },
+    }
   };
-  const grid = [0,0.25,0.5,0.75,1].map(f=>{
-    const yy = padT + (H-padT-padB)*(1-f);
-    return `<line x1="${padL}" y1="${yy.toFixed(1)}" x2="${W-padR}" y2="${yy.toFixed(1)}" stroke="#EEF2F0" stroke-width="1"/>`;
-  }).join('');
-  const todayX = x(todayIdx).toFixed(1);
-  const labels = pts.map((p,i)=>`<text x="${x(i).toFixed(1)}" y="${H-7}" font-size="9.3" fill="#5B6663" text-anchor="middle">${monthShort(p.key)}</text>`).join('');
-  const dots = (field,color) => pts.map((p,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(p[field]).toFixed(1)}" r="2.6" fill="${color}"/>`).join('');
-  const valueLabels = (field,color,dy) => pts.map((p,i)=> p[field]>0 ? `<text x="${x(i).toFixed(1)}" y="${(y(p[field])+dy).toFixed(1)}" font-size="8.5" fill="${color}" text-anchor="middle" font-weight="600">${fmtCompact(p[field])}</text>` : '').join('');
-  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
-    ${grid}
-    <line x1="${todayX}" y1="${padT}" x2="${todayX}" y2="${H-padB}" stroke="#DCE2DF" stroke-width="1.4" stroke-dasharray="3 3"/>
-    <text x="${todayX}" y="${padT-5}" font-size="9.5" fill="#5B6663" text-anchor="middle">hoje</text>
-    <path d="${pathFor('income',0,todayIdx)}" fill="none" stroke="#0E7A5F" stroke-width="2.2"/>
-    <path d="${pathFor('income',todayIdx,n-1)}" fill="none" stroke="#0E7A5F" stroke-width="2.2" stroke-dasharray="5 4"/>
-    <path d="${pathFor('expenses',0,todayIdx)}" fill="none" stroke="#B8433A" stroke-width="2.2"/>
-    <path d="${pathFor('expenses',todayIdx,n-1)}" fill="none" stroke="#B8433A" stroke-width="2.2" stroke-dasharray="5 4"/>
-    ${dots('income','#0E7A5F')}${dots('expenses','#B8433A')}
-    ${valueLabels('income','#0E7A5F',-8)}${valueLabels('expenses','#B8433A',15)}
-    ${labels}
-  </svg>`;
-  document.getElementById('chart-forecast').innerHTML = svg;
+  if(forecastChart) forecastChart.destroy();
+  forecastChart = new Chart(document.getElementById('chart-forecast'), { type:'line', data, options });
 }
 
+let saldoChart = null;
 function renderSaldoTrendChart(){
   const { pts, todayIdx } = forecastWindow();
   const before = addMonthsToKey(pts[0].key,-1);
   let running = accumulatedUpTo(before);
-  const series = pts.map(p=>{
-    running += (p.income - p.expenses);
-    return { key:p.key, value:running, projected:p.projected };
-  });
-  const n = series.length;
-  const W=620,H=250,padL=52,padR=12,padT=18,padB=28;
-  const vals = series.map(p=>p.value);
-  const maxVal = Math.max(...vals, 0);
-  const minVal = Math.min(...vals, 0);
-  const range = (maxVal-minVal) || 1;
-  const stepX = (W-padL-padR)/(n-1);
-  const x = i => padL + stepX*i;
-  const y = v => padT + (H-padT-padB) * (1 - (v-minVal)/range);
-  const pathFor = (from,to) => {
-    let d='';
-    for(let i=from;i<=to;i++) d += (i===from?'M':'L') + x(i).toFixed(1)+' '+y(series[i].value).toFixed(1)+' ';
-    return d.trim();
+  const series = pts.map(p=>{ running += (p.income - p.expenses); return { key:p.key, value:running }; });
+  const labels = series.map(p=>monthShort(p.key));
+
+  const data = { labels, datasets: [{
+    label:'Saldo acumulado',
+    data: series.map(p=>p.value),
+    borderColor:'#0E7A5F', backgroundColor:'rgba(14,122,95,0.08)', pointBackgroundColor:'#0E7A5F',
+    borderWidth:2.4, pointRadius:3, tension:0, fill:'origin',
+    segment: { borderDash: dashAfterToday(todayIdx) },
+    datalabels: {
+      color:'#0E7A5F',
+      anchor: (ctx)=> ctx.dataset.data[ctx.dataIndex] >= 0 ? 'end' : 'start',
+      align: (ctx)=> ctx.dataset.data[ctx.dataIndex] >= 0 ? 'top' : 'bottom',
+      offset:4, font:{size:9,weight:'600'},
+      formatter: (v)=> fmtCompact(v),
+    }
+  }] };
+  const options = {
+    responsive:true, maintainAspectRatio:false,
+    interaction:{ mode:'index', intersect:false },
+    plugins:{
+      legend:{display:false},
+      tooltip:{ callbacks:{ label:(ctx)=> `Saldo: ${fmt.format(ctx.parsed.y)}` } },
+    },
+    scales:{
+      x:{ grid:{display:false}, ticks: todayTickOptions(todayIdx) },
+      y:{ grid:{color:'#EEF2F0'}, ticks:{display:false}, border:{display:false} },
+    }
   };
-  const zeroY = y(0).toFixed(1);
-  const zeroLine = minVal<0 ? `<line x1="${padL}" y1="${zeroY}" x2="${W-padR}" y2="${zeroY}" stroke="#B8433A" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>` : '';
-  const todayX = x(todayIdx).toFixed(1);
-  const labels = series.map((p,i)=>`<text x="${x(i).toFixed(1)}" y="${H-7}" font-size="9.3" fill="#5B6663" text-anchor="middle">${monthShort(p.key)}</text>`).join('');
-  const areaPath = `M${x(0).toFixed(1)} ${y(0).toFixed(1)} ` + series.map((p,i)=>`L${x(i).toFixed(1)} ${y(p.value).toFixed(1)}`).join(' ') + ` L${x(n-1).toFixed(1)} ${y(0).toFixed(1)} Z`;
-  const valueLabels = series.map((p,i)=>{
-    const above = p.value>=0;
-    return `<text x="${x(i).toFixed(1)}" y="${(y(p.value)+(above?-8:15)).toFixed(1)}" font-size="8.5" fill="#0E7A5F" text-anchor="middle" font-weight="600">${fmtCompact(p.value)}</text>`;
-  }).join('');
-  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
-    <path d="${areaPath}" fill="#0E7A5F" opacity="0.07"/>
-    ${zeroLine}
-    <line x1="${todayX}" y1="${padT}" x2="${todayX}" y2="${H-padB}" stroke="#DCE2DF" stroke-width="1.4" stroke-dasharray="3 3"/>
-    <path d="${pathFor(0,todayIdx)}" fill="none" stroke="#0E7A5F" stroke-width="2.4"/>
-    <path d="${pathFor(todayIdx,n-1)}" fill="none" stroke="#0E7A5F" stroke-width="2.4" stroke-dasharray="5 4"/>
-    ${valueLabels}
-    ${labels}
-  </svg>`;
-  document.getElementById('chart-saldo').innerHTML = svg;
+  if(saldoChart) saldoChart.destroy();
+  saldoChart = new Chart(document.getElementById('chart-saldo'), { type:'line', data, options });
 }
 
-function donutSVG(segments, size, thickness){
-  const r = (size-thickness)/2;
-  const cx = size/2, cy = size/2;
-  const circumference = 2*Math.PI*r;
-  const total = segments.reduce((s,x)=>s+x.value,0) || 1;
-  let acc = 0;
-  const arcs = segments.filter(s=>s.value>0).map(s=>{
-    const len = (s.value/total)*circumference;
-    const dasharray = `${len.toFixed(2)} ${(circumference-len).toFixed(2)}`;
-    const dashoffset = (-acc).toFixed(2);
-    acc += len;
-    return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="${thickness}" stroke-dasharray="${dasharray}" stroke-dashoffset="${dashoffset}" transform="rotate(-90 ${cx} ${cy})"/>`;
-  }).join('');
-  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="flex-shrink:0;">
-    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#EEF2F0" stroke-width="${thickness}"/>
-    ${arcs}
-  </svg>`;
+let saudeDonutChart = null;
+function renderSaudeDonut(segments, donutBase){
+  const wrap = document.getElementById('saude-donut-row');
+  if(donutBase<=0){ wrap.style.display='none'; return; }
+  wrap.style.display='flex';
+  if(saudeDonutChart) saudeDonutChart.destroy();
+  saudeDonutChart = new Chart(document.getElementById('saude-donut'), {
+    type:'doughnut',
+    data:{
+      labels: segments.map(s=>s.label),
+      datasets:[{ data: segments.map(s=>s.value), backgroundColor: segments.map(s=>s.color), borderWidth:0 }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'74%',
+      plugins:{
+        legend:{display:false}, datalabels:{display:false},
+        tooltip:{ callbacks:{ label:(ctx)=> `${ctx.label}: ${fmt.format(ctx.parsed)}` } },
+      }
+    }
+  });
 }
 function renderSaude(key,t){
   const fixedTotal = sumEntries(t.mm.fixed);
@@ -219,35 +225,28 @@ function renderSaude(key,t){
   else { label='Apertado'; color='var(--bad)'; }
   const pct = ratio===null?0:Math.min(100,ratio*100);
 
-  const sobra = t.income>0 ? Math.max(0, t.income-fixedTotal-variableTotal) : 0;
-  const donutBase = t.income>0 ? t.income : (fixedTotal+variableTotal);
-  const segments = [
-    {label:'Fixas', value:fixedTotal, color:'var(--info)'},
-    {label:'Variáveis', value:variableTotal, color:'var(--warn)'},
-    {label:'Sobra', value:sobra, color:'var(--brand)'},
-  ];
-  const donutHtml = donutBase>0 ? `
-    <div style="display:flex;align-items:center;gap:18px;margin-top:16px;">
-      ${donutSVG(segments, 108, 16)}
-      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;">
-        ${segments.filter(s=>s.value>0).map(s=>`
-          <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;">
-            <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${s.color};vertical-align:middle;"></span>${s.label}</span>
-            <span style="font-family:var(--mono);font-weight:600;white-space:nowrap;">${fmt.format(s.value)} · ${(s.value/donutBase*100).toFixed(0)}%</span>
-          </div>`).join('')}
-      </div>
-    </div>
-  ` : '';
-
-  document.getElementById('saude-panel').innerHTML = `
+  document.getElementById('saude-summary').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <span class="health-badge" style="background:${ratio===null?'#EEF1F0':color};color:${ratio===null?'var(--ink-soft)':'#fff'}">${label}</span>
       <span class="small">${ratio!==null ? (ratio*100).toFixed(0)+'% da renda comprometida com fixas' : ''}</span>
     </div>
     <div class="tl-bar-wrap" style="height:10px;margin-bottom:12px;"><div class="tl-bar" style="width:${pct}%;background:${ratio===null?'#ccc':color}"></div></div>
     <div class="small">${savings!==null ? `Taxa de sobra do mês: <strong style="color:${savings>=0?'var(--brand)':'var(--bad)'}">${(savings*100).toFixed(0)}%</strong> da renda${savings<0?' — mês fechando no vermelho':''}.` : 'Lance a receita do mês para calcular a taxa de sobra.'}</div>
-    ${donutHtml}
   `;
+
+  const sobra = t.income>0 ? Math.max(0, t.income-fixedTotal-variableTotal) : 0;
+  const donutBase = t.income>0 ? t.income : (fixedTotal+variableTotal);
+  const segments = [
+    {label:'Fixas', value:fixedTotal, color:'#3A5BC7'},
+    {label:'Variáveis', value:variableTotal, color:'#B8792B'},
+    {label:'Sobra', value:sobra, color:'#0E7A5F'},
+  ];
+  document.getElementById('saude-legend').innerHTML = segments.filter(s=>s.value>0).map(s=>`
+    <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${s.color};vertical-align:middle;"></span>${s.label}</span>
+      <span style="font-family:var(--mono);font-weight:600;white-space:nowrap;">${fmt.format(s.value)} · ${(s.value/donutBase*100).toFixed(0)}%</span>
+    </div>`).join('');
+  renderSaudeDonut(segments, donutBase);
 }
 
 function renderFaturasInto(mm, targetId, monthKey){
@@ -368,31 +367,31 @@ function renderAno(){
 document.getElementById('ano-prev').onclick = ()=>{ currentYear--; renderAno(); };
 document.getElementById('ano-next').onclick = ()=>{ currentYear++; renderAno(); };
 
+let anoChart = null;
 function renderAnoChart(data){
-  const n = data.length;
-  const W=900,H=260,padL=36,padR=12,padT=18,padB=28;
-  const maxVal = Math.max(1, ...data.map(d=>Math.max(d.income,d.expenses))) * 1.15;
-  const groupW = (W-padL-padR)/n;
-  const barW = groupW*0.32;
-  const y = v => padT + (H-padT-padB) * (1 - v/maxVal);
-  const baseY = H-padB;
-  const bars = data.map((d,i)=>{
-    const gx = padL + groupW*i;
-    const incX = gx + groupW*0.5 - barW - 1.5;
-    const expX = gx + groupW*0.5 + 1.5;
-    const incY = y(d.income), expY = y(d.expenses);
-    const incLabel = d.income>0 ? `<text x="${(incX+barW/2).toFixed(1)}" y="${(incY-4).toFixed(1)}" font-size="8" fill="#0E7A5F" text-anchor="middle" font-weight="600">${fmtCompact(d.income)}</text>` : '';
-    const expLabel = d.expenses>0 ? `<text x="${(expX+barW/2).toFixed(1)}" y="${(expY-4).toFixed(1)}" font-size="8" fill="#B8433A" text-anchor="middle" font-weight="600">${fmtCompact(d.expenses)}</text>` : '';
-    return `
-      <rect x="${incX.toFixed(1)}" y="${incY.toFixed(1)}" width="${barW.toFixed(1)}" height="${(baseY-incY).toFixed(1)}" rx="2" fill="#0E7A5F"/>
-      <rect x="${expX.toFixed(1)}" y="${expY.toFixed(1)}" width="${barW.toFixed(1)}" height="${(baseY-expY).toFixed(1)}" rx="2" fill="#B8433A"/>
-      ${incLabel}${expLabel}
-      <text x="${(gx+groupW/2).toFixed(1)}" y="${H-7}" font-size="9.5" fill="#5B6663" text-anchor="middle">${MONTH_NAMES[keyParts(d.key).m-1].slice(0,3)}</text>
-    `;
-  }).join('');
-  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">
-    <line x1="${padL}" y1="${baseY}" x2="${W-padR}" y2="${baseY}" stroke="#EEF2F0" stroke-width="1"/>
-    ${bars}
-  </svg>`;
-  document.getElementById('chart-ano').innerHTML = svg;
+  const labels = data.map(d=>MONTH_NAMES[keyParts(d.key).m-1].slice(0,3));
+  const barSeries = (field,color) => ({
+    label: field==='income' ? 'Receita' : 'Despesas',
+    data: data.map(d=>d[field]),
+    backgroundColor: color, borderRadius:2, categoryPercentage:0.6, barPercentage:0.9,
+    datalabels: {
+      display: (ctx)=> ctx.dataset.data[ctx.dataIndex] > 0,
+      color, anchor:'end', align:'top', font:{size:8,weight:'600'},
+      formatter: (v)=> fmtCompact(v),
+    }
+  });
+  const chartData = { labels, datasets:[ barSeries('income','#0E7A5F'), barSeries('expenses','#B8433A') ] };
+  const options = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{
+      legend:{display:false},
+      tooltip:{ callbacks:{ label:(ctx)=> `${ctx.dataset.label}: ${fmt.format(ctx.parsed.y)}` } },
+    },
+    scales:{
+      x:{ grid:{display:false}, ticks:{color:'#5B6663', font:{size:9.5}} },
+      y:{ grid:{color:'#EEF2F0'}, ticks:{display:false}, border:{display:false} },
+    }
+  };
+  if(anoChart) anoChart.destroy();
+  anoChart = new Chart(document.getElementById('chart-ano'), { type:'bar', data:chartData, options });
 }

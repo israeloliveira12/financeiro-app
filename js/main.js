@@ -1,3 +1,7 @@
+// Registra o plugin de rótulos de valor uma vez só — cada gráfico liga/desliga
+// os labels no próprio dataset (ver dashboard.js), então não precisa de default global.
+Chart.register(ChartDataLabels);
+
 /* ================= Navegação de abas ================= */
 // Cobre tanto os botões da sidebar (desktop) quanto a barra inferior (mobile) —
 // os dois conjuntos de botões ficam sincronizados, já que ambos existem no DOM

@@ -13,6 +13,8 @@
 <link rel="icon" href="icon-192.png">
 <title>Controle Financeiro</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -67,7 +69,11 @@
           <div class="panel">
             <h2>Saúde financeira do mês</h2>
             <p class="panel-hint">Quanto da sua renda já está presa em despesas fixas</p>
-            <div id="saude-panel"></div>
+            <div id="saude-summary"></div>
+            <div id="saude-donut-row" style="display:none;align-items:center;gap:18px;margin-top:16px;">
+              <div class="chart-canvas-wrap" style="width:108px;height:108px;flex-shrink:0;"><canvas id="saude-donut"></canvas></div>
+              <div id="saude-legend" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
           </div>
           <div class="panel">
             <h2>Crédito disponível</h2>
@@ -105,7 +111,7 @@
           <div class="cards" id="dash-cards-ano" style="margin-bottom:20px;"></div>
           <h2>Receita x Despesas — mês a mês</h2>
           <p class="panel-hint">Comparativo do ano selecionado</p>
-          <div id="chart-ano"></div>
+          <div class="chart-canvas-wrap" style="height:280px;"><canvas id="chart-ano"></canvas></div>
         </div>
       </div>
 
@@ -114,13 +120,13 @@
           <h2>Receita x Despesas — 12 meses</h2>
           <p class="panel-hint">Contínua = realizado · tracejada = previsão</p>
           <div class="chart-legend"><span><span class="dot" style="background:var(--brand)"></span>Receita</span><span><span class="dot" style="background:var(--bad)"></span>Despesas</span></div>
-          <div id="chart-forecast"></div>
+          <div class="chart-canvas-wrap" style="height:250px;"><canvas id="chart-forecast"></canvas></div>
         </div>
         <div class="panel">
           <h2>Tendência do saldo acumulado</h2>
           <p class="panel-hint">Contínua = realizado · tracejada = previsão</p>
           <div class="chart-legend"><span><span class="dot" style="background:var(--brand)"></span>Saldo acumulado</span></div>
-          <div id="chart-saldo"></div>
+          <div class="chart-canvas-wrap" style="height:250px;"><canvas id="chart-saldo"></canvas></div>
         </div>
       </div>
     </div>
