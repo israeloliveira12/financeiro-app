@@ -51,11 +51,11 @@ function renderEntryTable(tbodyId, list, kind){
     const progressNote = e.status==='Parcial' ? `<div class="progress-note">${fmt.format(e.paidAmount||0)} de ${fmt.format(e.amount)}</div>` : '';
     const linkedCommitment = e.commitmentId && state.commitments.some(c=>c.id===e.commitmentId);
     return `<tr>
-      <td data-label="Descrição">${e.desc}${linkedCommitment?'<br><span class="tag-commit">auto</span>':''}</td>
+      <td data-label="Descrição">${esc(e.desc)}${linkedCommitment?'<br><span class="tag-commit">auto</span>':''}</td>
       ${methodCell}
       <td class="num" data-label="Valor">${fmt.format(e.amount)}</td>
-      <td data-label="Status"><div class="status-cell"><span class="badge ${badgeClass(e.status)}" onclick="cycleStatus('${kind}','${e.id}')">${e.status}</span>${progressNote}</div></td>
-      <td class="row-actions"><button onclick="openEntryEditModal('${kind}','${e.id}')" title="Editar">${ICON.edit}</button><button class="del" onclick="deleteEntry('${kind}','${e.id}')" title="Excluir">${ICON.trash}</button></td>
+      <td data-label="Status"><div class="status-cell"><button type="button" class="badge ${badgeClass(e.status)}" onclick="cycleStatus('${esc(kind)}','${esc(e.id)}')" title="Clique para avançar o status">${esc(e.status)}</button>${progressNote}</div></td>
+      <td class="row-actions"><button onclick="openEntryEditModal('${esc(kind)}','${esc(e.id)}')" title="Editar" aria-label="Editar ${escapeAttr(e.desc)}">${ICON.edit}</button><button class="del" onclick="deleteEntry('${esc(kind)}','${esc(e.id)}')" title="Excluir" aria-label="Excluir ${escapeAttr(e.desc)}">${ICON.trash}</button></td>
     </tr>`;
   }).join('');
 }
@@ -73,36 +73,42 @@ function openEntryEditModal(kind, id){
     </div>`;
   const paidLabel = kind==='income' ? 'Recebido até agora' : 'Pago até agora';
   const html = `
-    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
-      <div class="modal-box">
-        <h3>Editar lançamento</h3>
-        <p class="modal-sub">${linkedCommitment ? 'Este lançamento vem de um compromisso fixo — as mudanças aqui valem só para ' + monthLabel(currentMonth) + '.' : monthLabel(currentMonth)}</p>
+    <div class="modal-overlay">
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="em-title">
+        <div class="modal-head">
+          <h3 id="em-title">Editar lançamento</h3>
+          <button class="modal-x" onclick="closeModal()" aria-label="Fechar">${ICON.close}</button>
+        </div>
+        <p class="modal-sub">${linkedCommitment ? 'Este lançamento vem de um compromisso fixo — as mudanças aqui valem só para ' + esc(monthLabel(currentMonth)) + '.' : esc(monthLabel(currentMonth))}</p>
         <div class="entry-form" style="margin-top:0;">
-          <div><label>Descrição</label><input type="text" id="em-desc" value="${escapeAttr(e.desc)}"></div>
-          <div><label>Valor</label><input type="number" step="0.01" id="em-amount" value="${e.amount}"></div>
+          <div><label for="em-desc">Descrição</label><input type="text" id="em-desc" value="${escapeAttr(e.desc)}"></div>
+          <div><label for="em-amount">Valor</label><input type="number" step="0.01" min="0.01" id="em-amount" value="${esc(e.amount)}"></div>
         </div>
         ${methodSection}
         <div class="entry-form">
-          <div><label>${paidLabel}</label><input type="number" step="0.01" id="em-paid" value="${e.paidAmount||0}"></div>
-          <div><label>Mover para o mês</label><input type="month" id="em-move-month" value="${currentMonth}"></div>
+          <div><label for="em-paid">${esc(paidLabel)}</label><input type="number" step="0.01" min="0" id="em-paid" value="${esc(e.paidAmount||0)}"></div>
+          <div><label for="em-move-month">Mover para o mês</label><input type="month" id="em-move-month" value="${esc(currentMonth)}"></div>
         </div>
         <div class="modal-close-row">
           <button class="btn secondary" onclick="closeModal()">Cancelar</button>
-          <button class="btn" onclick="saveEntryEdit('${kind}','${id}')" style="margin-left:8px;">Salvar</button>
+          <button class="btn" onclick="saveEntryEdit('${esc(kind)}','${esc(id)}')" style="margin-left:8px;">Salvar</button>
         </div>
       </div>
     </div>`;
   document.getElementById('modal-root').innerHTML = html;
   refreshCardSelects();
+  focusModal();
 }
 
 function saveEntryEdit(kind, id){
   const mm = ensureMonth(currentMonth);
   const e = mm[kind].find(x=>x.id===id);
   if(!e) return;
+  const amountRaw = document.getElementById('em-amount').value;
+  if(!validAmount(amountRaw)) return fieldError('em-amount','O valor precisa ser maior que zero.');
   const before = { desc:e.desc, amount:e.amount, method:e.method, cardId:e.cardId, paidAmount:e.paidAmount||0, status:e.status };
   e.desc = document.getElementById('em-desc').value.trim() || e.desc;
-  e.amount = num(document.getElementById('em-amount').value);
+  e.amount = num(amountRaw);
   if(kind!=='income'){
     e.method = document.getElementById('em-method').value;
     e.cardId = e.method==='Cartão de Crédito' ? document.getElementById('em-card').value : undefined;
@@ -203,21 +209,27 @@ function deleteEntry(kind, id){
 }
 function addIncome(){
   const desc = document.getElementById('inc-desc').value.trim();
-  const amount = num(document.getElementById('inc-amount').value);
-  if(!desc || !amount) return;
+  const amountRaw = document.getElementById('inc-amount').value;
+  const amount = num(amountRaw);
+  if(!desc) return fieldError('inc-desc','Escreva uma descrição para a receita.');
+  if(!validAmount(amountRaw)) return fieldError('inc-amount','O valor precisa ser maior que zero.');
   const mm = ensureMonth(currentMonth);
   mm.income.push({id:uid(), desc, amount, status:'Pendente'});
   document.getElementById('inc-desc').value=''; document.getElementById('inc-amount').value='';
   logAudit('Lançamento', `Receita "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}, status Pendente.`);
   save(); renderMes();
+  document.getElementById('inc-desc').focus(); // depois do render, pra emendar o próximo
 }
 function addManual(kind){
   const p = kind==='fixed' ? 'fix' : 'var';
   const desc = document.getElementById(p+'-desc').value.trim();
-  const amount = num(document.getElementById(p+'-amount').value);
+  const amountRaw = document.getElementById(p+'-amount').value;
+  const amount = num(amountRaw);
   const method = document.getElementById(p+'-method').value;
   const cardId = method==='Cartão de Crédito' ? document.getElementById(p+'-card').value : undefined;
-  if(!desc || !amount) return;
+  if(!desc) return fieldError(p+'-desc','Escreva uma descrição para a despesa.');
+  if(!validAmount(amountRaw)) return fieldError(p+'-amount','O valor precisa ser maior que zero.');
+  if(method==='Cartão de Crédito' && !cardId) return fieldError(p+'-card','Cadastre um cartão antes de lançar no crédito.');
   const mm = ensureMonth(currentMonth);
   mm[kind].push({id:uid(), desc, amount, method, cardId, status:'Pendente'});
   document.getElementById(p+'-desc').value='';
@@ -226,6 +238,7 @@ function addManual(kind){
   const methodInfo = method ? ` via ${method}${method==='Cartão de Crédito' && cardId ? ' ('+cardName(cardId)+')' : ''}` : '';
   logAudit('Lançamento', `${kindLabel} "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}${methodInfo}, status Pendente.`);
   save(); renderMes();
+  document.getElementById(p+'-desc').focus(); // depois do render, pra emendar o próximo
 }
 function toggleCardSelect(prefix){
   const method = document.getElementById(prefix+'-method').value;
@@ -237,6 +250,21 @@ function toggleCardSelect(prefix){
 document.getElementById('mes-prev').onclick = ()=>{ currentMonth = addMonthsToKey(currentMonth,-1); renderMes(); };
 document.getElementById('mes-next').onclick = ()=>{ currentMonth = addMonthsToKey(currentMonth,1); renderMes(); };
 document.getElementById('mes-today').onclick = ()=>{ currentMonth = todayKey(); renderMes(); };
+
+// Enter em qualquer campo do formulário de lançamento dispara o "Adicionar" —
+// digitar descrição + valor e ter que pegar o mouse era o atrito diário do app.
+function bindEnterToAdd(fieldIds, run){
+  fieldIds.forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('keydown', ev=>{
+      if(ev.key==='Enter'){ ev.preventDefault(); run(); }
+    });
+  });
+}
+bindEnterToAdd(['inc-desc','inc-amount'], ()=>addIncome());
+bindEnterToAdd(['fix-desc','fix-amount','fix-method','fix-card'], ()=>addManual('fixed'));
+bindEnterToAdd(['var-desc','var-amount','var-method','var-card'], ()=>addManual('variable'));
 function toggleLegendPopover(){
   const el = document.getElementById('status-legend-popover');
   el.style.display = el.style.display==='none' ? 'flex' : 'none';

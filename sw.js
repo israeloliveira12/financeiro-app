@@ -1,4 +1,4 @@
-const CACHE_NAME = 'financeiro-cache-v4';
+const CACHE_NAME = 'financeiro-cache-v5';
 const FILES_TO_CACHE = [
   './',
   './index.html',
@@ -43,13 +43,32 @@ self.addEventListener('activate', (event) => {
 // não aparecerem mesmo depois de recarregar a página manualmente).
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  // Só mexe em arquivo do próprio site. Antes o SW interceptava TODO GET, então:
+  // (1) as chamadas ao Supabase eram cacheadas e, offline, o fallback devolvia o
+  // index.html para quem esperava JSON — o supabase-js quebrava ao interpretar;
+  // (2) scripts de CDN vêm como resposta opaca e cache.put() rejeita, gerando
+  // promessa não tratada a cada carregamento.
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
     fetch(event.request, { cache: 'no-store' })
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        // Só guarda resposta boa e do mesmo domínio (basic) — evita gravar erro
+        // 404/500 no cache e servir isso como se fosse a versão offline.
+        if (response.ok && response.type === 'basic') {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
+        }
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match('./index.html')))
+      .catch(() => caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        // Fallback pro shell só faz sentido em navegação; para um .js ou .css
+        // devolver HTML criaria um erro de sintaxe confuso.
+        if (event.request.mode === 'navigate') return caches.match('./index.html');
+        return Response.error();
+      }))
   );
 });

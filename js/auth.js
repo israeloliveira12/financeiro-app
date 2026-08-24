@@ -5,29 +5,57 @@ const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentSession = null;
 let syncTimer = null;
 
-function setSyncStatus(text, isError){
-  const el = document.getElementById('sync-status');
-  if(!el) return;
-  el.textContent = text;
-  el.style.color = isError ? 'var(--bad)' : '#9FB0A8';
+let syncPending = false;   // há alteração local ainda não confirmada na nuvem
+let syncRetryTimer = null;
+
+// O status aparece em dois lugares: no rodapé da barra lateral (computador) e
+// num chip no topo — o chip existe também no celular, onde o rodapé some por CSS.
+function setSyncStatus(text, kind){
+  document.querySelectorAll('[data-sync-text]').forEach(el=>{ el.textContent = text; });
+  document.querySelectorAll('[data-sync-chip]').forEach(el=>{
+    el.classList.remove('is-ok','is-error','is-busy');
+    el.classList.add(kind==='error' ? 'is-error' : (kind==='busy' ? 'is-busy' : 'is-ok'));
+    el.title = text;
+  });
+  const foot = document.getElementById('sync-status');
+  if(foot) foot.style.color = kind==='error' ? 'var(--bad)' : '#9FB0A8';
 }
 async function pushToCloud(){
-  if(!currentSession) return;
+  if(!currentSession || !state) return;
+  syncPending = true;
+  setSyncStatus('Enviando…','busy');
   try{
     const { error } = await supa.from('financeiro_state').upsert({
       user_id: currentSession.user.id,
       data: state,
-      updated_at: new Date(state.meta.lastModified).toISOString()
+      // updated_at do servidor, não do aparelho: um celular com o relógio atrasado
+      // fazia a cópia dele parecer mais antiga e perder na resolução de conflito.
+      updated_at: new Date().toISOString()
     });
     if(error) throw error;
-    setSyncStatus('Sincronizado às ' + new Date(state.meta.lastModified).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}));
+    syncPending = false;
+    clearTimeout(syncRetryTimer);
+    setSyncStatus('Sincronizado às ' + new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}),'ok');
   }catch(e){
-    setSyncStatus('Sem conexão — salvando só neste aparelho', true);
+    setSyncStatus('Sem conexão — salvo neste aparelho','error');
+    // Tenta de novo sozinho. Antes, uma falha só era reparada no próximo save —
+    // dava pra passar horas com dado só no aparelho achando que tinha subido.
+    clearTimeout(syncRetryTimer);
+    syncRetryTimer = setTimeout(pushToCloud, 30000);
   }
 }
 function scheduleCloudSync(){
   clearTimeout(syncTimer);
   syncTimer = setTimeout(pushToCloud, 1500);
+}
+// Assim que a rede volta, empurra o que ficou pendente sem esperar novo clique.
+window.addEventListener('online', ()=>{ if(syncPending) pushToCloud(); });
+window.addEventListener('offline', ()=> setSyncStatus('Sem conexão — salvo neste aparelho','error'));
+// Clicar no chip força o envio na hora.
+function forceSync(){
+  if(!currentSession) return;
+  clearTimeout(syncTimer);
+  pushToCloud();
 }
 
 function showAuthGate(){
@@ -183,8 +211,11 @@ async function handleAuthEvent(session){
 async function onAuthenticated(session){
   currentSession = session;
   document.getElementById('modal-root').innerHTML = '';
-  document.querySelector('.app').style.display = '';
   renderUserChip();
+  // A tela do app SÓ aparece depois que o estado existe. Antes ela era exibida
+  // enquanto o fetch da nuvem ainda estava no ar, e clicar num menu nessa janela
+  // dava "Cannot read properties of null (reading 'months')".
+  showLoading();
 
   const localState = loadLocalState();
   let cloudState = null;
@@ -201,7 +232,16 @@ async function onAuthenticated(session){
   else state = defaultState();
 
   localStorage.setItem(localKey(), JSON.stringify(state));
-  if(localTs > cloudTs) scheduleCloudSync(); // garante que a nuvem fique com a versão mais nova
 
+  hideLoading();
+  document.querySelector('.app').style.display = '';
   bootUI();
+
+  if(localTs > cloudTs) scheduleCloudSync(); // garante que a nuvem fique com a versão mais nova
+  else setSyncStatus('Sincronizado','ok');
 }
+function showLoading(){
+  document.getElementById('modal-root').innerHTML =
+    `<div class="modal-overlay is-loading"><div class="boot-card"><span class="spinner" aria-hidden="true"></span><span>Carregando seus dados…</span></div></div>`;
+}
+function hideLoading(){ document.getElementById('modal-root').innerHTML = ''; }

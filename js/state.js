@@ -43,7 +43,7 @@ function cardName(id){ const c=state.cards.find(x=>x.id===id); return c?c.name:'
 function cardColor(id){ const c=state.cards.find(x=>x.id===id); return c?(c.color||'#999'):'#999'; }
 function cardOptionsHTML(selectedId){
   if(!state.cards.length) return `<option value="">Cadastre um cartão primeiro</option>`;
-  return state.cards.map(c=>`<option value="${c.id}" ${c.id===selectedId?'selected':''}>${c.name}</option>`).join('');
+  return state.cards.map(c=>`<option value="${esc(c.id)}" ${c.id===selectedId?'selected':''}>${esc(c.name)}</option>`).join('');
 }
 function methodOptionsHTML(selected){
   return METHODS.map(m=>`<option value="${escapeAttr(m)}" ${m===selected?'selected':''}>${m}</option>`).join('');
@@ -59,9 +59,29 @@ function methodDisplay(e){
   if(!method) return '—';
   if(method==='Cartão de Crédito'){
     const label = e.cardId ? cardName(e.cardId) : 'Cartão';
-    return `<span title="Cartão de Crédito" style="white-space:nowrap;"><span class="tag-card" style="background:${cardColor(e.cardId)}"></span>${label}</span>`;
+    return `<span title="Cartão de Crédito" style="white-space:nowrap;"><span class="tag-card" style="background:${esc(cardColor(e.cardId))}"></span>${esc(label)}</span>`;
   }
-  return `<span title="${escapeAttr(method)}">${method}</span>`;
+  return `<span title="${escapeAttr(method)}">${esc(method)}</span>`;
+}
+
+/* ================= Validação de formulário ================= */
+// Valor precisa ser um número positivo. Um "-500" digitado por engano passava
+// direto e levava a despesa do mês pra negativo, sem nenhum sinal na tela.
+function validAmount(v){ const n = num(v); return isFinite(n) && n > 0; }
+// Marca o campo em vermelho, foca nele e mostra o motivo — a validação antiga
+// só dava `return` e o botão parecia não funcionar.
+function fieldError(inputId, message){
+  const el = document.getElementById(inputId);
+  if(el){
+    el.classList.add('has-error');
+    el.setAttribute('aria-invalid','true');
+    el.focus();
+    const limpa = ()=>{ el.classList.remove('has-error'); el.removeAttribute('aria-invalid'); };
+    el.addEventListener('input', limpa, {once:true});
+    el.addEventListener('change', limpa, {once:true});
+  }
+  showToast(message, 'error');
+  return false;
 }
 
 /* ================= Compromissos: regras de vigência ================= */
@@ -166,6 +186,39 @@ function accumulatedUpTo(key){
     cursor = addMonthsToKey(cursor,1);
   }
   return acc;
+}
+// Quanto de fato já entrou menos o que de fato já saiu (só "Pago"/"Recebido" e a
+// parte já quitada dos "Parcial"). Complementa accumulatedUpTo, que é o saldo
+// disponível considerando também o que está orçado — os dois convivem de
+// propósito: um responde "quanto posso me comprometer", outro "quanto está na conta".
+function realizedUpTo(key){
+  let acc = num(state.meta.startingBalance);
+  const start = earliestRelevantMonth();
+  if(!start) return acc;
+  let cursor = start;
+  while(monthDiff(cursor,key) >= 0){
+    const mm = state.months[cursor];
+    if(mm){
+      const entrou = mm.income.reduce((s,e)=>
+        s + (e.status==='Recebido' ? num(e.amount) : (e.status==='Parcial' ? num(e.paidAmount||0) : 0)), 0);
+      const saiu = [...mm.fixed, ...mm.variable].reduce((s,e)=>
+        s + (e.status==='Pago' ? num(e.amount) : (e.status==='Parcial' ? num(e.paidAmount||0) : 0)), 0);
+      acc += entrou - saiu;
+    }
+    cursor = addMonthsToKey(cursor,1);
+  }
+  return acc;
+}
+// Base de todos os cálculos proporcionais do mês, conforme definido pelo usuário:
+// o que sobrou dos meses anteriores + a receita deste mês.
+function disponivelDoMes(key, income){
+  return accumulatedUpTo(addMonthsToKey(key,-1)) + num(income);
+}
+// O que ainda falta pagar da fatura de um cartão num mês (ignora o que já foi pago).
+function faturaEmAberto(mm, cardId){
+  return [...mm.fixed, ...mm.variable]
+    .filter(e=>(e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId && e.status!=='Pago')
+    .reduce((s,e)=>s+remaining(e),0);
 }
 
 /* ================= Status ================= */

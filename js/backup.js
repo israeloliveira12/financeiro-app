@@ -31,7 +31,12 @@ function checkAutoBackup(){
   const days = BACKUP_FREQ_DAYS[state.meta.backupFrequency] || 1;
   const last = state.meta.lastExported;
   const daysSince = last ? (Date.now()-last)/86400000 : Infinity;
-  if(daysSince >= days) exportBackup();
+  if(daysSince < days) return;
+  exportBackup();
+  // O navegador pode bloquear um download que não veio de clique direto, e não há
+  // como detectar isso pelo JS. Em vez de marcar como feito em silêncio (o app
+  // passava a dizer "backup de ontem" sem ter baixado nada), avisa na tela.
+  showToast('Backup automático gerado (.sql). Se o download não apareceu, o navegador bloqueou — use o botão abaixo.');
 }
 function saveSaldoInicial(){
   const oldVal = state.meta.startingBalance || 0;
@@ -61,9 +66,11 @@ values (
 on conflict (user_id) do update set data = excluded.data, updated_at = excluded.updated_at;
 `;
 }
+// Um arquivo só, em .sql — decisão explícita do usuário (2026-08). O .sql carrega
+// o estado inteiro como literal jsonb, então serve tanto para restaurar direto no
+// SQL Editor do Supabase quanto para reimportar aqui no app (ver importBackup).
 function exportBackup(){
   const stamp = new Date().toISOString().slice(0,16).replace(/[-:T]/g,'').replace(/(\d{8})(\d{4})/,'$1-$2');
-  downloadBlob(new Blob([JSON.stringify(state,null,2)], {type:'application/json'}), `backup-financeiro-${stamp}.json`);
   downloadBlob(new Blob([generateSQLBackup()], {type:'application/sql'}), `backup-financeiro-${stamp}.sql`);
   state.meta.lastExported = Date.now();
   save();
@@ -84,16 +91,27 @@ function validateBackupShape(parsed){
   }
   return null;
 }
+// Extrai o estado de dentro do .sql gerado por generateSQLBackup(). O literal está
+// entre aspas simples, com as aspas internas dobradas pelo padrão do Postgres.
+function parseSQLBackup(texto){
+  const m = texto.match(/values\s*\(\s*'[^']*'\s*,\s*'([\s\S]*?)'::jsonb/i);
+  if(!m) return null;
+  try{ return JSON.parse(m[1].replace(/''/g, "'")); }catch(e){ return null; }
+}
 function importBackup(ev){
   const file = ev.target.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = ()=>{
-    let parsed;
-    try{
-      parsed = JSON.parse(reader.result);
-    }catch(e){
-      alert('Não consegui ler esse arquivo. Confira se é um backup exportado por este mesmo sistema.');
+    let parsed = null;
+    const bruto = String(reader.result);
+    if(/\.sql$/i.test(file.name) || /insert\s+into\s+financeiro_state/i.test(bruto)){
+      parsed = parseSQLBackup(bruto);
+    } else {
+      try{ parsed = JSON.parse(bruto); }catch(e){ parsed = null; }
+    }
+    if(!parsed){
+      alert('Não consegui ler esse arquivo. Confira se é um backup .sql exportado por este mesmo sistema.');
       ev.target.value=''; return;
     }
     const problem = validateBackupShape(parsed);

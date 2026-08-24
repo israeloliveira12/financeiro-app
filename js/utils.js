@@ -18,3 +18,38 @@ function monthShort(k){ const {y,m}=keyParts(k); return `${MONTH_NAMES[m-1].slic
 function monthDiff(a,b){ const A=keyParts(a),B=keyParts(b); return (B.y-A.y)*12+(B.m-A.m); }
 function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
 function escapeAttr(s){ return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+// Escapa texto do usuário antes de entrar em innerHTML. TODA descrição, nome de
+// cartão ou mensagem montada com dado digitado precisa passar por aqui — sem isso
+// um "<img src=x onerror=...>" numa descrição executa código, fica salvo no state
+// e volta sincronizado em todo aparelho (bug real, corrigido em 2026-08).
+function esc(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* ================= Datas de vencimento ================= */
+// Um "dia do mês" (1-31) vira a data real daquele mês, sem estourar em meses curtos:
+// dia 31 em fevereiro cai no último dia do mês, não em 3 de março.
+function dueDateOf(monthKey, day){
+  if(!day) return null;
+  const {y,m} = keyParts(monthKey);
+  const ultimo = new Date(y, m, 0).getDate();
+  return new Date(y, m-1, Math.min(num(day), ultimo));
+}
+function startOfToday(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+function daysUntil(date){
+  if(!date) return null;
+  return Math.round((new Date(date).setHours(0,0,0,0) - startOfToday()) / 86400000);
+}
+function shortDate(date){
+  return date ? `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}` : '';
+}
+function relativeDueLabel(dias){
+  if(dias===null) return '';
+  if(dias < -1) return `atrasado há ${Math.abs(dias)} dias`;
+  if(dias === -1) return 'venceu ontem';
+  if(dias === 0) return 'vence hoje';
+  if(dias === 1) return 'vence amanhã';
+  return `vence em ${dias} dias`;
+}

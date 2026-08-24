@@ -12,11 +12,16 @@ function lastViewKey(){
   return currentSession ? 'financeiro_lastView_' + currentSession.user.id : 'financeiro_lastView';
 }
 function switchView(view){
+  // Trava enquanto o estado ainda não chegou da nuvem — sem isso um clique de menu
+  // durante o login derrubava o app inteiro com TypeError.
+  if(!state) return;
+  const alvo = document.getElementById('view-'+view);
+  if(!alvo) return;
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
   const moreBtn = document.getElementById('mobile-more-btn');
   if(moreBtn) moreBtn.classList.toggle('active', MOBILE_OVERFLOW_ITEMS.some(it=>it.view===view));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.getElementById('view-'+view).classList.add('active');
+  alvo.classList.add('active');
   localStorage.setItem(lastViewKey(), view);
   renderAll();
 }
@@ -33,17 +38,132 @@ const MOBILE_OVERFLOW_ITEMS = [
 ];
 function showMoreMenu(){
   const html = `
-    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
-      <div class="modal-box">
-        <h3>Mais opções</h3>
+    <div class="modal-overlay">
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="more-title">
+        <div class="modal-head">
+          <h3 id="more-title">Mais opções</h3>
+          <button class="modal-x" onclick="closeModal()" aria-label="Fechar">${ICON.close}</button>
+        </div>
         <div class="more-menu-list">
-          ${MOBILE_OVERFLOW_ITEMS.map(it=>`<button class="more-menu-item" onclick="closeModal(); switchView('${it.view}');">${it.icon}<span>${it.label}</span></button>`).join('')}
+          ${MOBILE_OVERFLOW_ITEMS.map(it=>`<button class="more-menu-item" onclick="closeModal(); switchView('${esc(it.view)}');">${it.icon}<span>${esc(it.label)}</span></button>`).join('')}
         </div>
         <div class="modal-close-row"><button class="btn secondary" onclick="closeModal()">Fechar</button></div>
       </div>
     </div>`;
   document.getElementById('modal-root').innerHTML = html;
+  focusModal();
 }
+
+/* ================= Lançamento rápido (celular) =================
+   O botão central da barra abre uma folha com o valor em primeiro — o teclado
+   numérico já sobe no campo certo. Método vira chip tocável em vez de <select>,
+   e o lançamento cai sempre no mês que está aberto no "Mensal". */
+let quickKind = 'variable';
+function openQuickEntry(){
+  if(!state) return;
+  quickKind = 'variable';
+  const html = `
+    <div class="modal-overlay is-sheet">
+      <div class="modal-box sheet-box" role="dialog" aria-modal="true" aria-labelledby="qe-title">
+        <div class="sheet-grab"></div>
+        <div class="modal-head">
+          <h3 id="qe-title">Novo lançamento</h3>
+          <button class="modal-x" onclick="closeModal()" aria-label="Fechar">${ICON.close}</button>
+        </div>
+        <div class="mode-toggle qe-toggle" id="qe-toggle">
+          <button type="button" data-kind="income" onclick="setQuickKind('income')">Receita</button>
+          <button type="button" class="active" data-kind="variable" onclick="setQuickKind('variable')">Despesa</button>
+        </div>
+        <div class="qe-amount">
+          <span class="qe-cur">R$</span>
+          <input type="number" step="0.01" min="0.01" id="qe-amount" inputmode="decimal" placeholder="0,00" aria-label="Valor">
+        </div>
+        <div class="entry-form" style="margin-top:4px;">
+          <div><label for="qe-desc">Descrição</label><input type="text" id="qe-desc" placeholder="Ex: Mercado"></div>
+        </div>
+        <div id="qe-method-wrap">
+          <label style="margin-top:12px;">Forma de pagamento</label>
+          <div class="qe-chips" id="qe-chips"></div>
+        </div>
+        <p class="small" id="qe-month" style="margin-top:12px;"></p>
+        <div class="modal-close-row">
+          <button class="btn" style="width:100%;padding:12px;" onclick="saveQuickEntry()">Salvar lançamento</button>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById('modal-root').innerHTML = html;
+  renderQuickChips();
+  document.getElementById('qe-month').textContent = 'Vai para ' + monthLabel(currentMonth) + '.';
+  bindEnterToAdd(['qe-desc','qe-amount'], ()=>saveQuickEntry());
+  document.getElementById('qe-amount').focus();
+}
+function setQuickKind(kind){
+  quickKind = kind;
+  document.querySelectorAll('#qe-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.kind===kind));
+  document.getElementById('qe-method-wrap').style.display = kind==='income' ? 'none' : '';
+}
+let quickMethod = 'Pix', quickCardId = null;
+function renderQuickChips(){
+  const chips = [];
+  state.cards.forEach(c=>chips.push({label:c.name, method:'Cartão de Crédito', cardId:c.id, cor:c.color}));
+  ['Pix','Boleto','Débito automático','Dinheiro','Transferência'].forEach(m=>chips.push({label:m, method:m, cardId:null}));
+  if(!chips.some(c=>c.method===quickMethod && c.cardId===quickCardId)){
+    quickMethod = chips[0].method; quickCardId = chips[0].cardId;
+  }
+  document.getElementById('qe-chips').innerHTML = chips.map((c,i)=>{
+    const on = c.method===quickMethod && c.cardId===quickCardId;
+    const ponto = c.cardId ? `<span class="tag-card" style="background:${escapeAttr(c.cor||'#999')}"></span>` : '';
+    return `<button type="button" class="qe-chip ${on?'on':''}" onclick="pickQuickMethod(${i})">${ponto}${esc(c.label)}</button>`;
+  }).join('');
+  window.__quickChips = chips;
+}
+function pickQuickMethod(i){
+  const c = window.__quickChips[i];
+  quickMethod = c.method; quickCardId = c.cardId;
+  renderQuickChips();
+}
+function saveQuickEntry(){
+  const desc = document.getElementById('qe-desc').value.trim();
+  const amountRaw = document.getElementById('qe-amount').value;
+  if(!validAmount(amountRaw)) return fieldError('qe-amount','O valor precisa ser maior que zero.');
+  if(!desc) return fieldError('qe-desc','Escreva uma descrição.');
+  const amount = num(amountRaw);
+  const mm = ensureMonth(currentMonth);
+  if(quickKind==='income'){
+    mm.income.push({id:uid(), desc, amount, status:'Pendente'});
+    logAudit('Lançamento', `Receita "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}, status Pendente.`);
+  } else {
+    mm.variable.push({id:uid(), desc, amount, method:quickMethod, cardId:quickCardId||undefined, status:'Pendente'});
+    const info = quickCardId ? ` via Cartão de Crédito (${cardName(quickCardId)})` : ` via ${quickMethod}`;
+    logAudit('Lançamento', `Despesa variável "${desc}" de ${fmt.format(amount)} lançada em ${monthLabel(currentMonth)}${info}, status Pendente.`);
+  }
+  closeModal();
+  save(); renderAll();
+  showToast(`${quickKind==='income'?'Receita':'Despesa'} de ${fmt.format(amount)} lançada.`);
+}
+
+/* ================= Modais: teclado e foco =================
+   Regra pedida pelo usuário: clicar fora NÃO fecha (evita perder o que foi
+   digitado por um clique torto) — só Esc ou o X. */
+function focusModal(){
+  const box = document.querySelector('.modal-box');
+  if(!box) return;
+  const alvo = box.querySelector('input:not([type=hidden]), select, textarea, button');
+  if(alvo) alvo.focus();
+}
+document.addEventListener('keydown', (ev)=>{
+  const box = document.querySelector('.modal-box[role="dialog"]');
+  if(!box) return;
+  if(ev.key === 'Escape'){ ev.preventDefault(); closeModal(); return; }
+  if(ev.key !== 'Tab') return;
+  // Prende o Tab dentro do modal.
+  const focaveis = [...box.querySelectorAll('a[href], button:not([disabled]), input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])')]
+    .filter(el=>el.offsetParent !== null);
+  if(!focaveis.length) return;
+  const primeiro = focaveis[0], ultimo = focaveis[focaveis.length-1];
+  if(ev.shiftKey && document.activeElement === primeiro){ ev.preventDefault(); ultimo.focus(); }
+  else if(!ev.shiftKey && document.activeElement === ultimo){ ev.preventDefault(); primeiro.focus(); }
+});
 
 /* ================= Inicialização ================= */
 function populateStaticSelects(){

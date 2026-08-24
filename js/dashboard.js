@@ -19,8 +19,8 @@ function renderTopDespesas(mm){
   if(!all.length){ el.innerHTML = `<div class="empty">Nenhuma despesa lançada este mês.</div>`; return; }
   el.innerHTML = all.map((e,i)=>`
     <div class="kv">
-      <span><strong>${i+1}.</strong>&nbsp; ${e.desc}</span>
-      <span style="font-family:var(--mono);font-weight:600;">${fmt.format(e.amount)}</span>
+      <span><strong>${i+1}.</strong>&nbsp; ${esc(e.desc)}</span>
+      <span style="font-family:var(--mono);font-weight:600;">${esc(fmt.format(e.amount))}</span>
     </div>
   `).join('');
 }
@@ -40,8 +40,8 @@ function renderMethodBreakdown(mm, targetId){
     // (soma de todas as barras = 100%) — não é relativo ao maior método.
     const pct = totalAll>0 ? (d.total/totalAll*100) : 0;
     return `<div class="debt-row">
-      <div class="debt-head"><span>${d.method}</span><span class="small">${fmt.format(d.total)} · ${pct.toFixed(0)}%</span></div>
-      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${Math.max(pct,3)}%"></div></div>
+      <div class="debt-head"><span>${esc(d.method)}</span><span class="small">${esc(fmt.format(d.total))} · ${esc(pct.toFixed(0))}%</span></div>
+      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${esc(Math.max(pct,3))}%"></div></div>
     </div>`;
   }).join('');
 }
@@ -53,7 +53,7 @@ function renderDebtProgress(){
     const diff = monthDiff(c.start, todayKey());
     if(diff < 0){
       return `<div class="debt-row">
-        <div class="debt-head"><span>${c.desc}</span><span class="small">começa em ${monthLabel(c.start)}</span></div>
+        <div class="debt-head"><span>${esc(c.desc)}</span><span class="small">começa em ${esc(monthLabel(c.start))}</span></div>
         <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:0%"></div></div>
       </div>`;
     }
@@ -61,10 +61,102 @@ function renderDebtProgress(){
     const pct = Math.min(100, (cur/c.total)*100);
     const rightText = cur>=c.total ? 'Quitado ✓' : `${cur}/${c.total} · ${pct.toFixed(0)}%`;
     return `<div class="debt-row">
-      <div class="debt-head"><span>${c.desc}</span><span class="small">${rightText}</span></div>
-      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${pct}%"></div></div>
+      <div class="debt-head"><span>${esc(c.desc)}</span><span class="small">${esc(rightText)}</span></div>
+      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${esc(pct)}%"></div></div>
     </div>`;
   }).join('');
+}
+
+/* ---------- Card-herói: o saldo disponível e sua composição ---------- */
+function renderHero(key, t){
+  const acc = accumulatedUpTo(key);              // saldo disponível (inclui o orçado)
+  const anterior = accumulatedUpTo(addMonthsToKey(key,-1));
+  const realizado = realizedUpTo(key);           // o que de fato está na conta
+  const aPagar = sumPayable(t.mm);
+  const aReceber = sumReceivable(t.mm);
+  document.getElementById('hero-card').innerHTML = `
+    <div>
+      <p class="hero-lbl">Saldo disponível</p>
+      <p class="hero-big ${acc<0?'is-neg':''}">${esc(fmt.format(acc))}</p>
+      <p class="hero-sub">Acumulado anterior <b>${esc(fmt.format(anterior))}</b> · receita do mês <b>${esc(fmt.format(t.income))}</b> · despesas <b>${esc(fmt.format(t.expenses))}</b></p>
+    </div>
+    <div class="hero-split">
+      <div>
+        <div class="k">Já na conta</div>
+        <div class="v" title="Só o que foi recebido menos o que foi pago">${esc(fmt.format(realizado))}</div>
+      </div>
+      <div>
+        <div class="k">Ainda a pagar</div>
+        <div class="v warn">${esc(fmt.format(aPagar))}</div>
+      </div>
+      <div>
+        <div class="k">Ainda a receber</div>
+        <div class="v">${esc(fmt.format(aReceber))}</div>
+      </div>
+    </div>`;
+}
+
+/* ---------- Agenda: o que vence nos próximos dias ----------
+   Usa duas fontes de data real: o dia de vencimento do cartão (fatura) e o
+   dia de vencimento cadastrado no compromisso. Lançamentos sem data ficam de
+   fora da janela e aparecem como resumo no rodapé do painel. */
+function agendaItems(key, mm){
+  const itens = [];
+  state.cards.forEach(c=>{
+    if(!c.dueDay) return;
+    const aberto = faturaEmAberto(mm, c.id);
+    if(aberto <= 0) return;
+    const data = dueDateOf(key, c.dueDay);
+    itens.push({ tipo:'fatura', titulo:`Fatura ${c.name}`, detalhe:'cartão de crédito', valor:aberto, data, cor:c.color||'#999', cardId:c.id });
+  });
+  ['fixed','variable','income'].forEach(cat=>{
+    mm[cat].forEach(e=>{
+      const quitado = cat==='income' ? e.status==='Recebido' : e.status==='Pago';
+      if(quitado) return;
+      if((e.method==='Cartão de Crédito'||e.isCard) && e.cardId) return; // já contado na fatura
+      const c = e.commitmentId ? state.commitments.find(x=>x.id===e.commitmentId) : null;
+      if(!c || !c.dueDay) return;
+      itens.push({
+        tipo: cat==='income'?'receita':'despesa', titulo:e.desc,
+        detalhe: cat==='income' ? 'a receber' : (e.method||'a pagar'),
+        valor: remaining(e), data: dueDateOf(key, c.dueDay), cor: cat==='income' ? '#0E7A5F' : '#3A5BC7'
+      });
+    });
+  });
+  return itens
+    .map(i=>({...i, dias: daysUntil(i.data)}))
+    .filter(i=>i.dias !== null && i.dias <= 7)
+    .sort((a,b)=>a.dias-b.dias);
+}
+function renderAgenda(key, mm){
+  const el = document.getElementById('agenda-panel');
+  const itens = agendaItems(key, mm);
+  const semData = [...mm.fixed, ...mm.variable].filter(e=>e.status!=='Pago').length;
+  if(!itens.length){
+    el.innerHTML = `<div class="empty">Nada vencendo nos próximos 7 dias.${
+      semData ? ` <br><span class="small">Você tem ${esc(semData)} despesa(s) em aberto sem dia de vencimento — cadastre o dia no compromisso para elas aparecerem aqui.</span>` : ''
+    }</div>`;
+    return;
+  }
+  const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  el.innerHTML = `<div class="agenda">${itens.map(i=>{
+    const atrasado = i.dias < 0, hoje = i.dias === 0;
+    const urgente = atrasado || hoje || i.dias <= 3;
+    const acao = i.tipo==='fatura'
+      ? `<button class="btn secondary btn-sm" onclick="payInvoice('${esc(i.cardId)}','${esc(key)}')">Pagar</button>` : '';
+    return `<div class="ag-row">
+      <div class="ag-when ${urgente?'is-urgent':''}">
+        <div class="d">${esc(String(i.data.getDate()).padStart(2,'0'))}</div>
+        <div class="m">${esc(MESES[i.data.getMonth()])}</div>
+      </div>
+      <div class="ag-main">
+        <div class="t"><span class="tag-card" style="background:${escapeAttr(i.cor)}"></span>${esc(i.titulo)}</div>
+        <div class="s ${atrasado?'is-late':''}">${esc(relativeDueLabel(i.dias))} · ${esc(i.detalhe)}</div>
+      </div>
+      <div class="ag-val">${esc(fmt.format(i.valor))}</div>
+      ${acao}
+    </div>`;
+  }).join('')}</div>`;
 }
 
 function renderDashboard(){
@@ -72,12 +164,19 @@ function renderDashboard(){
   const t = monthTotals(key);
   const acc = accumulatedUpTo(key);
   const prevT = peekMonthTotals(addMonthsToKey(key,-1));
+  const disponivel = disponivelDoMes(key, t.income);
+  const sobraPct = disponivel>0 ? ((disponivel - t.expenses)/disponivel*100) : null;
+
+  renderHero(key, t);
+  renderAgenda(key, t.mm);
+
   document.getElementById('dash-cards').innerHTML = [
     {label:'Receita do mês', value: fmt.format(t.income), cls:'', delta: deltaHTML(t.income, prevT.income, true)},
     {label:'Despesas do mês', value: fmt.format(t.expenses), cls:'', delta: deltaHTML(t.expenses, prevT.expenses, false)},
     {label:'Saldo do mês', value: fmt.format(t.balance), cls: t.balance>=0?'pos':'neg', delta: deltaHTML(t.balance, prevT.balance, true)},
-    {label:'Saldo acumulado', value: fmt.format(acc), cls: acc>=0?'pos':'neg', delta:''},
-  ].map(c=>`<div class="card"><div class="label">${c.label}</div><div class="value ${c.cls}">${c.value}</div>${c.delta}</div>`).join('');
+    {label:'Taxa de sobra', value: sobraPct===null ? '—' : sobraPct.toFixed(0)+'%', cls: (sobraPct||0)>=0?'pos':'neg',
+     delta: `<div class="delta neutral">sobre o disponível do mês</div>`},
+  ].map(c=>`<div class="card"><div class="label">${esc(c.label)}</div><div class="value ${esc(c.cls)}">${esc(c.value)}</div>${c.delta}</div>`).join('');
 
   renderForecastChart();
   renderSaldoTrendChart();
@@ -216,37 +315,52 @@ function renderSaudeDonut(segments, donutBase){
 function renderSaude(key,t){
   const fixedTotal = sumEntries(t.mm.fixed);
   const variableTotal = sumEntries(t.mm.variable);
-  const ratio = t.income>0 ? fixedTotal/t.income : null;
-  const savings = t.income>0 ? t.balance/t.income : null;
+  // Base = o que o usuário tem disponível no mês (acumulado dos meses anteriores
+  // + receita deste mês), decisão explícita dele. Antes a base era só a receita.
+  const disponivel = disponivelDoMes(key, t.income);
+  const gastos = fixedTotal + variableTotal;
+  const sobra = disponivel - gastos;
+  const estourou = sobra < 0;
+
+  const ratio = disponivel>0 ? fixedTotal/disponivel : null;
   let label,color;
-  if(ratio===null){ label='Sem receita lançada este mês'; color='var(--ink-soft)'; }
+  if(disponivel<=0){ label='Sem saldo disponível este mês'; color='var(--ink-soft)'; }
+  else if(estourou){ label='Estourou o disponível'; color='var(--bad)'; }
   else if(ratio<0.5){ label='Confortável'; color='var(--brand)'; }
   else if(ratio<0.75){ label='Atenção'; color='var(--warn)'; }
   else { label='Apertado'; color='var(--bad)'; }
   const pct = ratio===null?0:Math.min(100,ratio*100);
+  const taxaSobra = disponivel>0 ? sobra/disponivel : null;
 
   document.getElementById('saude-summary').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <span class="health-badge" style="background:${ratio===null?'#EEF1F0':color};color:${ratio===null?'var(--ink-soft)':'#fff'}">${label}</span>
-      <span class="small">${ratio!==null ? (ratio*100).toFixed(0)+'% da renda comprometida com fixas' : ''}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+      <span class="health-badge" style="background:${disponivel<=0?'#EEF1F0':color};color:${disponivel<=0?'var(--ink-soft)':'#fff'}">${esc(label)}</span>
+      <span class="small">${ratio!==null ? esc((ratio*100).toFixed(0))+'% do disponível preso em fixas' : ''}</span>
     </div>
-    <div class="tl-bar-wrap" style="height:10px;margin-bottom:12px;"><div class="tl-bar" style="width:${pct}%;background:${ratio===null?'#ccc':color}"></div></div>
-    <div class="small">${savings!==null ? `Taxa de sobra do mês: <strong style="color:${savings>=0?'var(--brand)':'var(--bad)'}">${(savings*100).toFixed(0)}%</strong> da renda${savings<0?' — mês fechando no vermelho':''}.` : 'Lance a receita do mês para calcular a taxa de sobra.'}</div>
+    <div class="tl-bar-wrap" style="height:10px;margin-bottom:12px;"><div class="tl-bar ${estourou?'over':''}" style="width:${esc(pct)}%;background:${disponivel<=0?'#ccc':color}"></div></div>
+    <div class="small">${taxaSobra!==null
+        ? `Disponível no mês: <strong style="font-family:var(--mono)">${esc(fmt.format(disponivel))}</strong> — acumulado anterior mais a receita deste mês.<br>Sobra: <strong style="color:${sobra>=0?'var(--brand)':'var(--bad)'}">${esc((taxaSobra*100).toFixed(0))}%</strong>${estourou?' — os gastos passaram o que você tem':''}.`
+        : 'Lance a receita do mês para calcular a proporção.'}</div>
   `;
 
-  const sobra = t.income>0 ? Math.max(0, t.income-fixedTotal-variableTotal) : 0;
-  const donutBase = t.income>0 ? t.income : (fixedTotal+variableTotal);
-  const segments = [
-    {label:'Fixas', value:fixedTotal, color:'#3A5BC7'},
-    {label:'Variáveis', value:variableTotal, color:'#B8792B'},
-    {label:'Sobra', value:sobra, color:'#0E7A5F'},
-  ];
+  // Legenda e rosca precisam usar o MESMO denominador. Antes a legenda dividia
+  // pela receita e o Chart.js pela soma das fatias — com gastos acima da receita
+  // a legenda chegava a somar 120% enquanto o desenho mostrava outra proporção.
+  const segments = estourou
+    ? [ {label:'Fixas', value:fixedTotal, color:'#3A5BC7'},
+        {label:'Variáveis', value:variableTotal, color:'#B8792B'} ]
+    : [ {label:'Fixas', value:fixedTotal, color:'#3A5BC7'},
+        {label:'Variáveis', value:variableTotal, color:'#B8792B'},
+        {label:'Sobra', value:sobra, color:'#0E7A5F'} ];
+  const soma = segments.reduce((s,x)=>s+x.value,0);
+
   document.getElementById('saude-legend').innerHTML = segments.filter(s=>s.value>0).map(s=>`
     <div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;">
-      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${s.color};vertical-align:middle;"></span>${s.label}</span>
-      <span style="font-family:var(--mono);font-weight:600;white-space:nowrap;">${fmt.format(s.value)} · ${(s.value/donutBase*100).toFixed(0)}%</span>
-    </div>`).join('');
-  renderSaudeDonut(segments, donutBase);
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${escapeAttr(s.color)};vertical-align:middle;"></span>${esc(s.label)}</span>
+      <span style="font-family:var(--mono);font-weight:600;white-space:nowrap;">${esc(fmt.format(s.value))} · ${esc(soma>0?(s.value/soma*100).toFixed(0):0)}%</span>
+    </div>`).join('') + (estourou
+      ? `<div class="saude-alert">Gastos ${esc(fmt.format(-sobra))} acima do disponível.</div>` : '');
+  renderSaudeDonut(segments, soma);
 }
 
 function renderFaturasInto(mm, targetId, monthKey){
@@ -254,7 +368,7 @@ function renderFaturasInto(mm, targetId, monthKey){
   if(!state.cards.length){ el.innerHTML = `<div class="empty">Cadastre seus cartões na aba "Cartões" para ver as faturas aqui.</div>`; return; }
   const cards = state.cards.map(c=>{
     const inv = cardInvoiceTotals(mm, c.id);
-    const payBtn = inv.lancado>0 ? `<button class="btn secondary" onclick="payInvoice('${c.id}','${monthKey}')">Pagar fatura</button>` : `<span></span>`;
+    const payBtn = inv.lancado>0 ? `<button class="btn secondary" onclick="payInvoice('${esc(c.id)}','${esc(monthKey)}')">Pagar fatura</button>` : `<span></span>`;
     let limitHtml = '';
     if(c.limit){
       const used = cardLimitUsage(c.id);
@@ -264,18 +378,18 @@ function renderFaturasInto(mm, targetId, monthKey){
       limitHtml = `<div class="fatura-limit">
         <div class="debt-head" style="margin-bottom:5px;">
           <span class="small">Limite do cartão</span>
-          <span class="small"><strong>${pct.toFixed(0)}% usado</strong> · ${disponivel>=0?fmt.format(disponivel)+' livre':'estourado'}</span>
+          <span class="small"><strong>${esc(pct.toFixed(0))}% usado</strong> · ${disponivel>=0?esc(fmt.format(disponivel))+' livre':'estourado'}</span>
         </div>
-        <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${over?'over':''}" style="width:${Math.max(pct,2)}%"></div></div>
+        <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${over?'over':''}" style="width:${esc(Math.max(pct,2))}%"></div></div>
       </div>`;
     }
     return `<div class="fatura-card">
       <div class="fatura-top">
-        <span class="fatura-name"><span class="tag-card" style="background:${c.color||'#999'}"></span><strong>${c.name}</strong>${c.dueDay?`<span class="small">&nbsp;· vence dia ${c.dueDay}</span>`:''}</span>
+        <span class="fatura-name"><span class="tag-card" style="background:${escapeAttr(c.color||'#999')}"></span><strong>${esc(c.name)}</strong>${c.dueDay?`<span class="small">&nbsp;· vence dia ${esc(c.dueDay)}</span>`:''}</span>
         <div class="fatura-vals-row">
-          <span class="fval"><span class="flabel">Lançado</span>${fmt.format(inv.lancado)}</span>
-          <span class="fval"><span class="flabel">Pendente</span>${fmt.format(inv.pendente)}</span>
-          <span class="fval total"><span class="flabel">Previsto</span>${fmt.format(inv.previsto)}</span>
+          <span class="fval"><span class="flabel">Lançado</span>${esc(fmt.format(inv.lancado))}</span>
+          <span class="fval"><span class="flabel">Pendente</span>${esc(fmt.format(inv.pendente))}</span>
+          <span class="fval total"><span class="flabel">Previsto</span>${esc(fmt.format(inv.previsto))}</span>
         </div>
         ${payBtn}
       </div>
@@ -306,17 +420,17 @@ function renderCardsSummary(){
     const pctC = Math.min(100, (usedC/c.limit)*100);
     const overC = usedC > c.limit;
     return `<div class="debt-row">
-      <div class="debt-head"><span><span class="tag-card" style="background:${c.color||'#999'}"></span>${c.name}</span><span class="small">${pctC.toFixed(0)}% usado</span></div>
-      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${overC?'over':''}" style="width:${Math.max(pctC,2)}%"></div></div>
+      <div class="debt-head"><span><span class="tag-card" style="background:${escapeAttr(c.color||'#999')}"></span>${esc(c.name)}</span><span class="small">${esc(pctC.toFixed(0))}% usado</span></div>
+      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${overC?'over':''}" style="width:${esc(Math.max(pctC,2))}%"></div></div>
     </div>`;
   }).join('');
   el.innerHTML = `
     <div class="debt-head" style="margin-bottom:6px;">
-      <span class="small">${withLimit.length} ${withLimit.length>1?'cartões':'cartão'} com limite cadastrado</span>
-      <span class="small"><strong>${pct.toFixed(0)}% usado</strong> · ${disponivel>=0?fmt.format(disponivel)+' livre':'estourado'}</span>
+      <span class="small">${esc(withLimit.length)} ${withLimit.length>1?'cartões':'cartão'} com limite cadastrado</span>
+      <span class="small"><strong>${esc(pct.toFixed(0))}% usado</strong> · ${disponivel>=0?esc(fmt.format(disponivel))+' livre':'estourado'}</span>
     </div>
-    <div class="tl-bar-wrap" style="height:10px;margin-bottom:10px;"><div class="tl-bar ${over?'over':''}" style="width:${Math.max(pct,2)}%"></div></div>
-    <div class="small" style="margin-bottom:16px;">${fmt.format(totalUsed)} usado de ${fmt.format(totalLimit)} de limite total.${semLimite>0?` (${semLimite} ${semLimite>1?'cartões':'cartão'} sem limite cadastrado ${semLimite>1?'não entram':'não entra'} nessa conta.)`:''}</div>
+    <div class="tl-bar-wrap" style="height:10px;margin-bottom:10px;"><div class="tl-bar ${over?'over':''}" style="width:${esc(Math.max(pct,2))}%"></div></div>
+    <div class="small" style="margin-bottom:16px;">${esc(fmt.format(totalUsed))} usado de ${esc(fmt.format(totalLimit))} de limite total.${semLimite>0?` (${esc(semLimite)} ${semLimite>1?'cartões':'cartão'} sem limite cadastrado ${semLimite>1?'não entram':'não entra'} nessa conta.)`:''}</div>
     ${perCardHtml}
   `;
 }

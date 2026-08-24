@@ -34,13 +34,20 @@ function downloadBlob(blob, filename){
 
 function exportCSV(){
   const { entriesFlat, cards, commitments } = collectAllData();
-  const esc = v => { const s = String(v==null?'':v); return /[",;\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
+  // Nome diferente de esc() de propósito: aqui a saída é CSV, não HTML.
+  // Um valor começando com = + - @ vira fórmula ao abrir no Excel; prefixar com
+  // apóstrofo neutraliza isso sem mudar o que a pessoa lê na célula.
+  const csvCell = v => {
+    let s = String(v==null?'':v);
+    if(/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return /[",;\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
   const money = v => num(v).toFixed(2).replace('.',',');
   const lines = [];
 
   lines.push('Lançamentos');
   lines.push(['Mês','Tipo','Descrição','Valor','Método','Cartão','Status','Pago'].join(';'));
-  entriesFlat.forEach(e=>lines.push([e.mes,e.tipo,e.descricao,money(e.valor),e.metodo,e.cartao,e.status,money(e.pago)].map(esc).join(';')));
+  entriesFlat.forEach(e=>lines.push([e.mes,e.tipo,e.descricao,money(e.valor),e.metodo,e.cartao,e.status,money(e.pago)].map(csvCell).join(";")));
 
   lines.push('');
   lines.push('Compromissos');
@@ -51,13 +58,13 @@ function exportCSV(){
       c.desc, catLabel, c.type==='installment'?'Parcelado':'Mensal contínuo', money(c.amount),
       c.category==='income'?'':(c.method||''), c.cardId?cardName(c.cardId):'', c.start,
       c.type==='installment' ? `${c.startNum}/${c.total}` : ''
-    ].map(esc).join(';'));
+    ].map(csvCell).join(";"));
   });
 
   lines.push('');
   lines.push('Cartões');
   lines.push(['Nome','Banco','Fecha','Vence','Limite'].join(';'));
-  cards.forEach(c=>lines.push([c.name, c.bank||'', c.closingDay||'', c.dueDay||'', c.limit?money(c.limit):''].map(esc).join(';')));
+  cards.forEach(c=>lines.push([c.name, c.bank||'', c.closingDay||'', c.dueDay||'', c.limit?money(c.limit):''].map(csvCell).join(";")));
 
   const blob = new Blob(['﻿'+lines.join('\n')], {type:'text/csv;charset=utf-8;'});
   downloadBlob(blob, `financeiro-dados-${dateStamp()}.csv`);
@@ -108,7 +115,7 @@ function exportPDF(){
 
   html += `<h2>Cartões</h2>`;
   html += cards.length ? `<table><thead><tr><th>Nome</th><th>Banco</th><th>Fecha</th><th>Vence</th><th class="num">Limite</th></tr></thead><tbody>${
-    cards.map(c=>`<tr><td>${c.name}</td><td>${c.bank||'—'}</td><td>${c.closingDay?('dia '+c.closingDay):'—'}</td><td>${c.dueDay?('dia '+c.dueDay):'—'}</td><td class="num">${c.limit?fmt.format(c.limit):'—'}</td></tr>`).join('')
+    cards.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.bank||'—')}</td><td>${c.closingDay?('dia '+esc(c.closingDay)):'—'}</td><td>${c.dueDay?('dia '+esc(c.dueDay)):'—'}</td><td class="num">${esc(c.limit?fmt.format(c.limit):'—')}</td></tr>`).join('')
   }</tbody></table>` : `<p class="pr-empty">Nenhum cartão cadastrado.</p>`;
 
   html += `<h2>Compromissos</h2>`;
@@ -118,7 +125,7 @@ function exportPDF(){
       const methodLabel = c.category==='income' ? '—' : (c.cardId?cardName(c.cardId):(c.method||'—'));
       let progress = c.type==='monthly' ? `Mensal contínuo desde ${monthLabel(c.start)}` : `Parcela inicial ${c.startNum}/${c.total} desde ${monthLabel(c.start)}`;
       if(c.endMonth) progress += ` · encerra após ${monthLabel(c.endMonth)}`;
-      return `<tr><td>${c.desc}</td><td>${catLabel}</td><td>${methodLabel}</td><td class="num">${fmt.format(c.amount)}</td><td>${progress}</td></tr>`;
+      return `<tr><td>${esc(c.desc)}</td><td>${esc(catLabel)}</td><td>${esc(methodLabel)}</td><td class="num">${esc(fmt.format(c.amount))}</td><td>${esc(progress)}</td></tr>`;
     }).join('')
   }</tbody></table>` : `<p class="pr-empty">Nenhum compromisso cadastrado.</p>`;
 
@@ -128,7 +135,7 @@ function exportPDF(){
   } else {
     monthKeys.forEach(k=>{
       const mm = state.months[k];
-      html += `<div class="pr-month-title">${monthLabel(k)}</div>`;
+      html += `<div class="pr-month-title">${esc(monthLabel(k))}</div>`;
       const all = [
         ...mm.income.map(e=>({...e, tipo:'Receita'})),
         ...mm.fixed.map(e=>({...e, tipo:'Despesa fixa'})),
@@ -136,13 +143,24 @@ function exportPDF(){
       ];
       if(!all.length){ html += `<p class="pr-empty">Nada lançado.</p>`; return; }
       html += `<table><thead><tr><th>Tipo</th><th>Descrição</th><th>Método</th><th class="num">Valor</th><th>Status</th></tr></thead><tbody>${
-        all.map(e=>`<tr><td>${e.tipo}</td><td>${e.desc}</td><td>${e.tipo==='Receita'?'—':(e.cardId?cardName(e.cardId):(e.method||'—'))}</td><td class="num">${fmt.format(e.amount)}</td><td>${e.status}</td></tr>`).join('')
+        all.map(e=>`<tr><td>${esc(e.tipo)}</td><td>${esc(e.desc)}</td><td>${esc(e.tipo==='Receita'?'—':(e.cardId?cardName(e.cardId):(e.method||'—')))}</td><td class="num">${esc(fmt.format(e.amount))}</td><td>${esc(e.status)}</td></tr>`).join('')
       }</tbody></table>`;
     });
   }
 
-  document.getElementById('print-report').innerHTML = html;
+  const alvo = document.getElementById('print-report');
+  alvo.innerHTML = html;
   logAudit('Exportação', 'Relatório exportado em PDF.');
   save();
-  setTimeout(()=> window.print(), 50);
+  // A classe no <html> troca o modo de impressão: o app inteiro sai do fluxo
+  // (display:none), em vez de só ficar invisível ocupando altura e virando
+  // páginas em branco no fim do PDF.
+  document.documentElement.classList.add('printing');
+  const limpar = ()=>{
+    document.documentElement.classList.remove('printing');
+    alvo.innerHTML = '';
+    window.removeEventListener('afterprint', limpar);
+  };
+  window.addEventListener('afterprint', limpar);
+  setTimeout(()=>{ window.print(); setTimeout(limpar, 1000); }, 50);
 }
