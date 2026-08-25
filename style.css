@@ -143,7 +143,16 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap;}
 .entry-table-simple th:nth-child(3), .entry-table-simple td:nth-child(3){width:82px;}
 .row-actions button{padding:2px 4px;}
 
-.badge{display:inline-block;padding:3px 7px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;min-width:62px;text-align:center;}
+/* O badge é um <button> de verdade (alcançável por Tab), mas precisa parecer
+   exatamente o <span> discreto de antes — sem o reset abaixo o navegador põe
+   borda "2px outset" preta e fonte Arial por cima. */
+.badge{
+  appearance:none;-webkit-appearance:none;border:0;margin:0;
+  font-family:inherit;line-height:normal;
+  display:inline-block;padding:3px 7px;border-radius:20px;font-size:11px;font-weight:600;
+  cursor:pointer;user-select:none;white-space:nowrap;min-width:62px;text-align:center;
+}
+.badge:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
 .badge.pendente{background:var(--warn-soft);color:var(--warn);}
 .badge.recebido, .badge.pago{background:var(--brand-soft);color:var(--brand);}
 .badge.lancado{background:var(--info-soft);color:var(--info);}
