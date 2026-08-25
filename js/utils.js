@@ -45,11 +45,11 @@ function daysUntil(date){
 function shortDate(date){
   return date ? `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}` : '';
 }
+// Só fala do que ainda vai vencer. O app não classifica nada como "atrasado" —
+// quem controla se a conta foi paga é o usuário, no status do lançamento.
 function relativeDueLabel(dias){
   if(dias===null) return '';
-  if(dias < -1) return `atrasado há ${Math.abs(dias)} dias`;
-  if(dias === -1) return 'venceu ontem';
-  if(dias === 0) return 'vence hoje';
+  if(dias <= 0) return 'vence hoje';
   if(dias === 1) return 'vence amanhã';
   return `vence em ${dias} dias`;
 }

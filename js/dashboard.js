@@ -125,7 +125,11 @@ function agendaItems(key, mm){
   });
   return itens
     .map(i=>({...i, dias: daysUntil(i.data)}))
-    .filter(i=>i.dias !== null && i.dias <= 7)
+    // Só o que ainda está por vir. Nada de "atrasado há X dias": o status de
+    // pagamento é controlado manualmente pelo usuário, então uma fatura que já
+    // venceu e continua como "Lançado" não significa que ficou em atraso —
+    // significa só que ele ainda não passou o status pra "Pago".
+    .filter(i=>i.dias !== null && i.dias >= 0 && i.dias <= 7)
     .sort((a,b)=>a.dias-b.dias);
 }
 function renderAgenda(key, mm){
@@ -140,8 +144,7 @@ function renderAgenda(key, mm){
   }
   const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   el.innerHTML = `<div class="agenda">${itens.map(i=>{
-    const atrasado = i.dias < 0, hoje = i.dias === 0;
-    const urgente = atrasado || hoje || i.dias <= 3;
+    const urgente = i.dias <= 3;
     const acao = i.tipo==='fatura'
       ? `<button class="btn secondary btn-sm" onclick="payInvoice('${esc(i.cardId)}','${esc(key)}')">Pagar</button>` : '';
     return `<div class="ag-row">
@@ -151,7 +154,7 @@ function renderAgenda(key, mm){
       </div>
       <div class="ag-main">
         <div class="t"><span class="tag-card" style="background:${escapeAttr(i.cor)}"></span>${esc(i.titulo)}</div>
-        <div class="s ${atrasado?'is-late':''}">${esc(relativeDueLabel(i.dias))} · ${esc(i.detalhe)}</div>
+        <div class="s">${esc(relativeDueLabel(i.dias))} · ${esc(i.detalhe)}</div>
       </div>
       <div class="ag-val">${esc(fmt.format(i.valor))}</div>
       ${acao}
