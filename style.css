@@ -425,6 +425,16 @@ tr.audit-daygroup:first-child td{padding-top:2px;}
   .table-scroll td.row-actions{justify-content:flex-end;}
   .table-scroll td.row-actions::before{content:none;}
   .table-scroll .badge{min-width:0;}
+
+  /* Alvos de toque no celular. O dedo precisa de ~32px, e editar/excluir
+     estavam com 22px — excluir ainda por cima é destrutivo. Os ícones seguem
+     do mesmo tamanho; só a área clicável cresce. */
+  .row-actions button{padding:9px 10px;}
+  .legend-info-btn{width:26px;height:26px;}
+  /* No badge a área cresce por fora, via ::after: a pílula pintada continua
+     exatamente do tamanho de antes (pedido explícito de manter minimalista). */
+  .badge{position:relative;}
+  .badge::after{content:'';position:absolute;left:-4px;right:-4px;top:-7px;bottom:-7px;}
 }
 
 /* ================= Relatório em PDF (via impressão do navegador) ================= */
