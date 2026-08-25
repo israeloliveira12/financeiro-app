@@ -67,8 +67,11 @@ h1{font-size:22px;margin:0 0 4px;}
 /* min-width:0 nos filhos: sem isso um item de grid nunca encolhe abaixo da
    largura mínima do próprio conteúdo, e um nome comprido vaza da tela. */
 .grid2-equal > *{min-width:0;}
-.saude-alert{font-size:11.5px;color:var(--bad);background:var(--bad-soft);border-radius:7px;padding:7px 9px;margin-top:2px;}
 
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(16,24,21,.05);}
+.panel h2{font-size:15px;margin:0 0 4px;}
+.panel .panel-hint{font-weight:400;color:var(--ink-soft);font-size:12px;margin:0 0 14px;}
+.saude-alert{font-size:11.5px;color:var(--bad);background:var(--bad-soft);border-radius:7px;padding:7px 9px;margin-top:2px;}
 
 .tl-bar-wrap{background:#EEF2F0;border-radius:6px;height:20px;position:relative;overflow:hidden;}
 .tl-bar{height:100%;background:var(--brand);border-radius:6px 0 0 6px;transition:width .2s;}
