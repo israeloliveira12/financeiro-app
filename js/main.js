@@ -29,10 +29,12 @@ document.querySelectorAll('[data-view]').forEach(btn=>{
   btn.addEventListener('click', ()=> switchView(btn.dataset.view));
 });
 
-// No celular a barra inferior só cabe 4 abas + "Mais" — os itens que não couberam
-// (Auditoria, Configurações) ficam num modal reaproveitando .modal-overlay/.modal-box.
+// A barra inferior tem 4 abas + o "+" no meio, com 2 de cada lado — é o que mantém
+// o botão de lançar exatamente centralizado (com 3 de um lado ele ficava torto).
+// Quem não coube vai pro modal "Mais", reaproveitando .modal-overlay/.modal-box.
 // No desktop isso não muda nada: a sidebar sempre mostrou todos os itens.
 const MOBILE_OVERFLOW_ITEMS = [
+  { view:'cartoes', label:'Cartões', icon: ICON.card },
   { view:'auditoria', label:'Auditoria', icon: ICON.audit },
   { view:'backup', label:'Configurações', icon: ICON.settings },
 ];
