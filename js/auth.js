@@ -8,17 +8,11 @@ let syncTimer = null;
 let syncPending = false;   // há alteração local ainda não confirmada na nuvem
 let syncRetryTimer = null;
 
-// O status aparece em dois lugares: no rodapé da barra lateral (computador) e
-// num chip no topo — o chip existe também no celular, onde o rodapé some por CSS.
 function setSyncStatus(text, kind){
-  document.querySelectorAll('[data-sync-text]').forEach(el=>{ el.textContent = text; });
-  document.querySelectorAll('[data-sync-chip]').forEach(el=>{
-    el.classList.remove('is-ok','is-error','is-busy');
-    el.classList.add(kind==='error' ? 'is-error' : (kind==='busy' ? 'is-busy' : 'is-ok'));
-    el.title = text;
-  });
-  const foot = document.getElementById('sync-status');
-  if(foot) foot.style.color = kind==='error' ? 'var(--bad)' : '#9FB0A8';
+  const el = document.getElementById('sync-status');
+  if(!el) return;
+  el.textContent = text;
+  el.style.color = kind==='error' ? 'var(--bad)' : '#9FB0A8';
 }
 async function pushToCloud(){
   if(!currentSession || !state) return;
@@ -51,12 +45,6 @@ function scheduleCloudSync(){
 // Assim que a rede volta, empurra o que ficou pendente sem esperar novo clique.
 window.addEventListener('online', ()=>{ if(syncPending) pushToCloud(); });
 window.addEventListener('offline', ()=> setSyncStatus('Sem conexão — salvo neste aparelho','error'));
-// Clicar no chip força o envio na hora.
-function forceSync(){
-  if(!currentSession) return;
-  clearTimeout(syncTimer);
-  pushToCloud();
-}
 
 function showAuthGate(){
   const html = `

@@ -75,10 +75,7 @@ function openEntryEditModal(kind, id){
   const html = `
     <div class="modal-overlay">
       <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="em-title">
-        <div class="modal-head">
-          <h3 id="em-title">Editar lançamento</h3>
-          <button class="modal-x" onclick="closeModal()" aria-label="Fechar">${ICON.close}</button>
-        </div>
+        <h3 id="em-title">Editar lançamento</h3>
         <p class="modal-sub">${linkedCommitment ? 'Este lançamento vem de um compromisso fixo — as mudanças aqui valem só para ' + esc(monthLabel(currentMonth)) + '.' : esc(monthLabel(currentMonth))}</p>
         <div class="entry-form" style="margin-top:0;">
           <div><label for="em-desc">Descrição</label><input type="text" id="em-desc" value="${escapeAttr(e.desc)}"></div>

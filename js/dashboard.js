@@ -67,118 +67,17 @@ function renderDebtProgress(){
   }).join('');
 }
 
-/* ---------- Card-herói: o saldo disponível e sua composição ---------- */
-function renderHero(key, t){
-  const acc = accumulatedUpTo(key);              // saldo disponível (inclui o orçado)
-  const anterior = accumulatedUpTo(addMonthsToKey(key,-1));
-  const realizado = realizedUpTo(key);           // o que de fato está na conta
-  const aPagar = sumPayable(t.mm);
-  const aReceber = sumReceivable(t.mm);
-  document.getElementById('hero-card').innerHTML = `
-    <div>
-      <p class="hero-lbl">Saldo disponível</p>
-      <p class="hero-big ${acc<0?'is-neg':''}">${esc(fmt.format(acc))}</p>
-      <p class="hero-sub">Acumulado anterior <b>${esc(fmt.format(anterior))}</b> · receita do mês <b>${esc(fmt.format(t.income))}</b> · despesas <b>${esc(fmt.format(t.expenses))}</b></p>
-    </div>
-    <div class="hero-split">
-      <div>
-        <div class="k">Já na conta</div>
-        <div class="v" title="Só o que foi recebido menos o que foi pago">${esc(fmt.format(realizado))}</div>
-      </div>
-      <div>
-        <div class="k">Ainda a pagar</div>
-        <div class="v warn">${esc(fmt.format(aPagar))}</div>
-      </div>
-      <div>
-        <div class="k">Ainda a receber</div>
-        <div class="v">${esc(fmt.format(aReceber))}</div>
-      </div>
-    </div>`;
-}
-
-/* ---------- Agenda: o que vence nos próximos dias ----------
-   Usa duas fontes de data real: o dia de vencimento do cartão (fatura) e o
-   dia de vencimento cadastrado no compromisso. Lançamentos sem data ficam de
-   fora da janela e aparecem como resumo no rodapé do painel. */
-function agendaItems(key, mm){
-  const itens = [];
-  state.cards.forEach(c=>{
-    if(!c.dueDay) return;
-    const aberto = faturaEmAberto(mm, c.id);
-    if(aberto <= 0) return;
-    const data = dueDateOf(key, c.dueDay);
-    itens.push({ tipo:'fatura', titulo:`Fatura ${c.name}`, detalhe:'cartão de crédito', valor:aberto, data, cor:c.color||'#999', cardId:c.id });
-  });
-  ['fixed','variable','income'].forEach(cat=>{
-    mm[cat].forEach(e=>{
-      const quitado = cat==='income' ? e.status==='Recebido' : e.status==='Pago';
-      if(quitado) return;
-      if((e.method==='Cartão de Crédito'||e.isCard) && e.cardId) return; // já contado na fatura
-      const c = e.commitmentId ? state.commitments.find(x=>x.id===e.commitmentId) : null;
-      if(!c || !c.dueDay) return;
-      itens.push({
-        tipo: cat==='income'?'receita':'despesa', titulo:e.desc,
-        detalhe: cat==='income' ? 'a receber' : (e.method||'a pagar'),
-        valor: remaining(e), data: dueDateOf(key, c.dueDay), cor: cat==='income' ? '#0E7A5F' : '#3A5BC7'
-      });
-    });
-  });
-  return itens
-    .map(i=>({...i, dias: daysUntil(i.data)}))
-    // Só o que ainda está por vir. Nada de "atrasado há X dias": o status de
-    // pagamento é controlado manualmente pelo usuário, então uma fatura que já
-    // venceu e continua como "Lançado" não significa que ficou em atraso —
-    // significa só que ele ainda não passou o status pra "Pago".
-    .filter(i=>i.dias !== null && i.dias >= 0 && i.dias <= 7)
-    .sort((a,b)=>a.dias-b.dias);
-}
-function renderAgenda(key, mm){
-  const el = document.getElementById('agenda-panel');
-  const itens = agendaItems(key, mm);
-  const semData = [...mm.fixed, ...mm.variable].filter(e=>e.status!=='Pago').length;
-  if(!itens.length){
-    el.innerHTML = `<div class="empty">Nada vencendo nos próximos 7 dias.${
-      semData ? ` <br><span class="small">Você tem ${esc(semData)} despesa(s) em aberto sem dia de vencimento — cadastre o dia no compromisso para elas aparecerem aqui.</span>` : ''
-    }</div>`;
-    return;
-  }
-  const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  el.innerHTML = `<div class="agenda">${itens.map(i=>{
-    const urgente = i.dias <= 3;
-    const acao = i.tipo==='fatura'
-      ? `<button class="btn secondary btn-sm" onclick="payInvoice('${esc(i.cardId)}','${esc(key)}')">Pagar</button>` : '';
-    return `<div class="ag-row">
-      <div class="ag-when ${urgente?'is-urgent':''}">
-        <div class="d">${esc(String(i.data.getDate()).padStart(2,'0'))}</div>
-        <div class="m">${esc(MESES[i.data.getMonth()])}</div>
-      </div>
-      <div class="ag-main">
-        <div class="t"><span class="tag-card" style="background:${escapeAttr(i.cor)}"></span>${esc(i.titulo)}</div>
-        <div class="s">${esc(relativeDueLabel(i.dias))} · ${esc(i.detalhe)}</div>
-      </div>
-      <div class="ag-val">${esc(fmt.format(i.valor))}</div>
-      ${acao}
-    </div>`;
-  }).join('')}</div>`;
-}
-
 function renderDashboard(){
   const key = todayKey();
   const t = monthTotals(key);
   const acc = accumulatedUpTo(key);
   const prevT = peekMonthTotals(addMonthsToKey(key,-1));
-  const disponivel = disponivelDoMes(key, t.income);
-  const sobraPct = disponivel>0 ? ((disponivel - t.expenses)/disponivel*100) : null;
-
-  renderHero(key, t);
-  renderAgenda(key, t.mm);
 
   document.getElementById('dash-cards').innerHTML = [
     {label:'Receita do mês', value: fmt.format(t.income), cls:'', delta: deltaHTML(t.income, prevT.income, true)},
     {label:'Despesas do mês', value: fmt.format(t.expenses), cls:'', delta: deltaHTML(t.expenses, prevT.expenses, false)},
     {label:'Saldo do mês', value: fmt.format(t.balance), cls: t.balance>=0?'pos':'neg', delta: deltaHTML(t.balance, prevT.balance, true)},
-    {label:'Taxa de sobra', value: sobraPct===null ? '—' : sobraPct.toFixed(0)+'%', cls: (sobraPct||0)>=0?'pos':'neg',
-     delta: `<div class="delta neutral">sobre o disponível do mês</div>`},
+    {label:'Saldo acumulado', value: fmt.format(acc), cls: acc>=0?'pos':'neg', delta:''},
   ].map(c=>`<div class="card"><div class="label">${esc(c.label)}</div><div class="value ${esc(c.cls)}">${esc(c.value)}</div>${c.delta}</div>`).join('');
 
   renderForecastChart();

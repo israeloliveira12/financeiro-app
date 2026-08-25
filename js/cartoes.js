@@ -43,10 +43,7 @@ function openCardEditModal(id){
   const html = `
     <div class="modal-overlay">
       <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="ecm2-title">
-        <div class="modal-head">
-          <h3 id="ecm2-title">Editar cartão</h3>
-          <button class="modal-x" onclick="closeModal()" aria-label="Fechar">${ICON.close}</button>
-        </div>
+        <h3 id="ecm2-title">Editar cartão</h3>
         <div class="entry-form" style="margin-top:0;">
           <div><label for="ecm2-name">Nome do cartão</label><input type="text" id="ecm2-name" value="${escapeAttr(c.name)}"></div>
           <div><label for="ecm2-bank">Banco / bandeira</label><input type="text" id="ecm2-bank" value="${escapeAttr(c.bank||'')}"></div>

@@ -28,28 +28,3 @@ function esc(s){
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-/* ================= Datas de vencimento ================= */
-// Um "dia do mês" (1-31) vira a data real daquele mês, sem estourar em meses curtos:
-// dia 31 em fevereiro cai no último dia do mês, não em 3 de março.
-function dueDateOf(monthKey, day){
-  if(!day) return null;
-  const {y,m} = keyParts(monthKey);
-  const ultimo = new Date(y, m, 0).getDate();
-  return new Date(y, m-1, Math.min(num(day), ultimo));
-}
-function startOfToday(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
-function daysUntil(date){
-  if(!date) return null;
-  return Math.round((new Date(date).setHours(0,0,0,0) - startOfToday()) / 86400000);
-}
-function shortDate(date){
-  return date ? `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}` : '';
-}
-// Só fala do que ainda vai vencer. O app não classifica nada como "atrasado" —
-// quem controla se a conta foi paga é o usuário, no status do lançamento.
-function relativeDueLabel(dias){
-  if(dias===null) return '';
-  if(dias <= 0) return 'vence hoje';
-  if(dias === 1) return 'vence amanhã';
-  return `vence em ${dias} dias`;
-}

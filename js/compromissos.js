@@ -32,10 +32,8 @@ function addCommitment(){
   } else {
     c.start = document.getElementById('cm-start-monthly').value || currentMonth;
   }
-  const dueDay = parseInt(document.getElementById('cm-dueday').value);
-  if(dueDay >= 1 && dueDay <= 31) c.dueDay = dueDay;
   state.commitments.push(c);
-  ['cm-desc','cm-amount','cm-dueday'].forEach(id=>document.getElementById(id).value='');
+  ['cm-desc','cm-amount'].forEach(id=>document.getElementById(id).value='');
   const catLabel = {fixed:'despesa fixa',variable:'despesa variável',income:'receita'}[category];
   const typeLabel = type==='installment' ? `parcelado ${c.startNum}/${c.total}` : 'mensal contínuo';
   const methodInfo = category!=='income' ? `, via ${c.method}${c.cardId?' ('+cardName(c.cardId)+')':''}` : '';
@@ -67,7 +65,6 @@ function renderCompromissos(){
     }
     const catLabel = {fixed:'Despesa fixa',variable:'Despesa variável',income:'Receita'}[c.category];
     const methodLabel = c.category==='income' ? '—' : methodDisplay(c);
-    if(c.dueDay) progress += ` · vence dia ${c.dueDay}`;
     if(c.endMonth) progress += ` · encerra após ${monthLabel(c.endMonth)}`;
     if(c.skipMonths && c.skipMonths.length) progress += ` · ${c.skipMonths.length} mês(es) pulado(s)`;
     return `<tr>
@@ -132,10 +129,7 @@ function openManageModal(id){
   const html = `
     <div class="modal-overlay">
       <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="mm-title">
-        <div class="modal-head">
-          <h3 id="mm-title">${esc(c.desc)}</h3>
-          <button class="modal-x" onclick="closeModal()" aria-label="Fechar">${ICON.close}</button>
-        </div>
+        <h3 id="mm-title">${esc(c.desc)}</h3>
         <p class="modal-sub">Alterações aqui valem para os meses ainda não fechados como "Pago"/"Recebido" — o histórico já concluído não é alterado.</p>
 
         <div class="modal-section" style="border-top:none;padding-top:0;margin-top:0;">
@@ -147,7 +141,6 @@ function openManageModal(id){
           <div class="entry-form">
             ${cardField}
             ${totalField}
-            <div class="narrow"><label for="mm-dueday">Vence dia</label><input type="number" id="mm-dueday" min="1" max="31" placeholder="—" value="${esc(c.dueDay||'')}"></div>
           </div>
           <div class="modal-close-row" style="margin-top:10px;"><button class="btn secondary" onclick="saveBasicCommitment('${esc(c.id)}')">Salvar dados</button></div>
         </div>
@@ -182,7 +175,7 @@ function openManageModal(id){
 function saveBasicCommitment(id){
   const c = state.commitments.find(x=>x.id===id);
   if(!c) return;
-  const before = { desc:c.desc, method:c.method, cardId:c.cardId, total:c.total, dueDay:c.dueDay };
+  const before = { desc:c.desc, method:c.method, cardId:c.cardId, total:c.total };
   if(c.type==='installment'){
     const novoTotal = parseInt(document.getElementById('mm-total').value)||c.total;
     if(c.startNum > novoTotal) return fieldError('mm-total', `A parcela inicial (${c.startNum}) não pode ser maior que o total (${novoTotal}).`);
@@ -196,14 +189,11 @@ function saveBasicCommitment(id){
     const totalEl = document.getElementById('mm-total');
     if(totalEl) c.total = parseInt(totalEl.value)||c.total;
   }
-  const dd = parseInt(document.getElementById('mm-dueday').value);
-  if(dd >= 1 && dd <= 31) c.dueDay = dd; else delete c.dueDay;
   const diff = auditDiff([
     ['Descrição', before.desc, c.desc],
     c.category!=='income' ? ['Método', before.method||'—', c.method||'—'] : null,
     c.category!=='income' ? ['Cartão', before.cardId?cardName(before.cardId):'—', c.cardId?cardName(c.cardId):'—'] : null,
     c.type==='installment' ? ['Total de parcelas', before.total, c.total] : null,
-    ['Vence dia', before.dueDay||'—', c.dueDay||'—'],
   ]);
   logAudit('Edição', `Compromisso "${c.desc}" editado${diff ? ' — '+diff : ''}.`);
   save(); renderCompromissos(); renderMes(); renderDashboard();
