@@ -85,7 +85,11 @@ function sameNameEntries(kind, desc, fromMonth){
 // Lê os três campos do reajuste de uma vez só — a prévia e o "Aplicar" leem iguais.
 function bulkAdjustInputs(){
   const valorRaw = document.getElementById('ba-valor').value;
-  const fromMonth = document.getElementById('ba-month').value;
+  let fromMonth = document.getElementById('ba-month').value;
+  // Piso no mês atual. O que já passou fica completamente fora do reajuste e da
+  // prévia — pedido explícito do usuário: só interessa o que ainda vai ser recebido,
+  // então nem como linha "já recebido" o passado deve aparecer.
+  if(fromMonth && monthDiff(fromMonth, currentMonth) > 0) fromMonth = currentMonth;
   const subtrai = document.getElementById('ba-op').value === 'subtrair';
   return { valorRaw, fromMonth, subtrai, delta: (subtrai ? -1 : 1) * num(valorRaw) };
 }
@@ -191,19 +195,19 @@ function openEntryEditModal(kind, id){
   const paidLabel = kind==='income' ? 'Recebido até agora' : 'Pago até agora';
   // Só oferece o reajuste em lote quando o lançamento de fato se repete e não vem
   // de compromisso (esse tem o próprio "Alterar valor a partir de um mês").
-  const repeticoes = linkedCommitment ? 0 : sameNameEntries(kind, e.desc, null).length;
+  const repeticoes = linkedCommitment ? 0 : sameNameEntries(kind, e.desc, currentMonth).length;
   const ajusteSection = repeticoes > 1 ? `
         <div class="modal-section">
           <h4>Reajustar em vários meses</h4>
-          <p class="small" style="margin:0;">"${esc(e.desc)}" aparece em ${esc(repeticoes)} meses. Some ou subtraia um valor em todos de uma vez, mesmo que cada mês tenha um valor diferente.</p>
+          <p class="small" style="margin:0;">"${esc(e.desc)}" aparece em ${esc(repeticoes)} meses de ${esc(monthLabel(currentMonth))} em diante. Some ou subtraia um valor em todos de uma vez, mesmo que cada mês tenha um valor diferente.</p>
           <div class="entry-form">
             <div class="narrow"><label for="ba-op">Operação</label><select id="ba-op" onchange="renderBulkPreview('${esc(kind)}','${esc(id)}')"><option value="somar">Somar</option><option value="subtrair">Subtrair</option></select></div>
             <div class="narrow"><label for="ba-valor">Valor</label><input type="number" step="0.01" min="0.01" id="ba-valor" placeholder="0,00" oninput="renderBulkPreview('${esc(kind)}','${esc(id)}')"></div>
-            <div><label for="ba-month">A partir de</label><input type="month" id="ba-month" value="${esc(currentMonth)}" onchange="renderBulkPreview('${esc(kind)}','${esc(id)}')"></div>
+            <div><label for="ba-month">A partir de</label><input type="month" id="ba-month" value="${esc(currentMonth)}" min="${esc(currentMonth)}" onchange="renderBulkPreview('${esc(kind)}','${esc(id)}')"></div>
             <div class="btn-wrap"><button class="btn" onclick="applyBulkAdjust('${esc(kind)}','${esc(id)}')">Aplicar</button></div>
           </div>
           <div class="ba-preview" id="ba-preview"></div>
-          <p class="small" style="margin-top:8px;">Aplicar vale só para o reajuste — o que estiver digitado acima não é salvo junto.</p>
+          <p class="small" style="margin-top:8px;">Meses anteriores a ${esc(monthLabel(currentMonth))} nunca mudam. Aplicar vale só para o reajuste — o que estiver digitado acima não é salvo junto.</p>
         </div>` : '';
   const html = `
     <div class="modal-overlay">
