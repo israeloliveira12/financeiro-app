@@ -128,11 +128,26 @@ function sumEntries(list){ return list.reduce((s,e)=>s+num(e.amount),0); }
 function remaining(e){ return Math.max(0, num(e.amount) - num(e.paidAmount||0)); }
 function sumPayable(mm){ return [...mm.fixed, ...mm.variable].filter(e=>e.status!=='Pago').reduce((s,e)=>s+remaining(e),0); }
 function sumReceivable(mm){ return mm.income.filter(e=>e.status!=='Recebido').reduce((s,e)=>s+remaining(e),0); }
+// Três grandezas independentes; "total" e "previsto" são soma delas.
+//   pago     = o que já foi quitado (Pago inteiro + a parte paga dos Parciais)
+//   lancado  = gasto de verdade e ainda em aberto (Lançado inteiro + o que falta dos Parciais)
+//   pendente = só orçamento, ainda não virou gasto
+// O antigo cálculo jogava o Parcial inteiro em "pendente" e contava "Pago" dentro
+// de "lancado". Resultado: adiantar R$ 250 de uma parcela fazia esse valor sumir da
+// tela, empurrava o restante pra "Pendente" (misturando dívida real com orçamento) e
+// encolhia o "Previsto" — que agora fica estável, porque pagar só move dinheiro de
+// "lancado" pra "pago". Isso também alinha o painel com a barra de limite do cartão,
+// que sempre contou o restante do Parcial como limite usado (ver cardLimitUsage).
 function cardInvoiceTotals(mm, cardId){
   const entries = [...mm.fixed, ...mm.variable].filter(e=>(e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId);
-  const lancado = entries.filter(e=>e.status==='Lançado'||e.status==='Pago').reduce((s,e)=>s+num(e.amount),0);
-  const pendente = entries.filter(e=>e.status==='Pendente'||e.status==='Parcial').reduce((s,e)=>s+remaining(e),0);
-  return { lancado, pendente, previsto: lancado+pendente };
+  let pago = 0, lancado = 0, pendente = 0;
+  entries.forEach(e=>{
+    if(e.status==='Pago') pago += num(e.amount);
+    else if(e.status==='Parcial'){ pago += num(e.paidAmount||0); lancado += remaining(e); }
+    else if(e.status==='Lançado') lancado += num(e.amount);
+    else pendente += remaining(e); // Pendente
+  });
+  return { pago, lancado, pendente, total: pago+lancado, previsto: pago+lancado+pendente };
 }
 function cardLimitUsage(cardId){
   // Quanto do limite já está comprometido de verdade: só "Lançado"/"Parcial" contam

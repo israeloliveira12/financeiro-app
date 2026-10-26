@@ -285,13 +285,19 @@ function renderFaturasInto(mm, targetId, monthKey){
         <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${over?'over':''}" style="width:${esc(Math.max(pct,2))}%"></div></div>
       </div>`;
     }
+    // "Pago" só entra na grade quando existe algo pago — sem pagamento parcial o
+    // card fica idêntico ao de sempre, com as três colunas de origem.
+    const temPago = inv.pago > 0;
+    const colPago = temPago
+      ? `<span class="fval pago"><span class="flabel">Pago</span>${esc(fmt.format(inv.pago))}</span>` : '';
     return `<div class="fatura-card">
-      <div class="fatura-top">
+      <div class="fatura-top${temPago?' has-pago':''}">
         <span class="fatura-name"><span class="tag-card" style="background:${escapeAttr(c.color||'#999')}"></span><strong>${esc(c.name)}</strong>${c.dueDay?`<span class="small">&nbsp;· vence dia ${esc(c.dueDay)}</span>`:''}</span>
         <div class="fatura-vals-row">
+          ${colPago}
           <span class="fval"><span class="flabel">Lançado</span>${esc(fmt.format(inv.lancado))}</span>
           <span class="fval"><span class="flabel">Pendente</span>${esc(fmt.format(inv.pendente))}</span>
-          <span class="fval total"><span class="flabel">Previsto</span>${esc(fmt.format(inv.previsto))}</span>
+          <span class="fval total" title="${temPago?escapeAttr('Total já na fatura: '+fmt.format(inv.total)):''}"><span class="flabel">Previsto</span>${esc(fmt.format(inv.previsto))}</span>
         </div>
         ${payBtn}
       </div>
@@ -338,7 +344,9 @@ function renderCardsSummary(){
 }
 function payInvoice(cardId, monthKey){
   const mm = ensureMonth(monthKey);
-  const entries = [...mm.fixed, ...mm.variable].filter(e=>(e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId && e.status==='Lançado');
+  // Inclui os "Parcial": antes só os "Lançado" eram quitados, então uma parcela
+  // adiantada pela metade ficava pra trás e a fatura nunca fechava.
+  const entries = [...mm.fixed, ...mm.variable].filter(e=>(e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId && (e.status==='Lançado' || e.status==='Parcial'));
   if(!entries.length) return;
   const card = state.cards.find(c=>c.id===cardId);
   const snapshot = entries.map(e=>({ e, status:e.status, paidAmount:e.paidAmount }));

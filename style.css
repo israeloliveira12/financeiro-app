@@ -242,18 +242,25 @@ tr.audit-daygroup:first-child td{padding-top:2px;}
 .fatura-card:last-child{border-bottom:none;padding-bottom:0;}
 .fatura-card:first-child{padding-top:0;}
 .fatura-top{display:grid;grid-template-columns:1fr 88px 88px 96px 122px;column-gap:14px;align-items:center;}
+/* Só quando existe valor pago entra a quarta coluna — sem pagamento parcial o
+   card continua com as três de sempre. */
+.fatura-top.has-pago{grid-template-columns:1fr 84px 84px 84px 96px 122px;}
 .fatura-name{font-size:13.5px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .fatura-name strong{margin-left:2px;}
 .fatura-vals-row{display:contents;}
 .fval{font-family:var(--mono);font-size:13px;font-weight:600;text-align:right;white-space:nowrap;}
 .fval .flabel{display:block;font-family:var(--sans);font-weight:400;font-size:9px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft);margin-bottom:2px;}
 .fval.total{color:var(--brand);font-size:14px;}
+.fval.pago{color:var(--brand);}
 .fatura-top .btn{justify-self:end;}
 .fatura-limit{margin-top:12px;}
 @container (max-width:520px){
   .fatura-top{grid-template-columns:1fr;row-gap:10px;}
   .fatura-name{white-space:normal;}
   .fatura-vals-row{display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:10px;grid-column:1;}
+  /* Com quatro valores, 2x2 em vez de quatro espremidos lado a lado: num celular
+     de 375px cada coluna ficaria com ~80px e "R$ 1.119,90" não cabe. */
+  .fatura-top.has-pago .fatura-vals-row{grid-template-columns:1fr 1fr;row-gap:10px;}
   .fval{text-align:left;}
   .fatura-top .btn{grid-column:1;justify-self:stretch;width:100%;}
 }
