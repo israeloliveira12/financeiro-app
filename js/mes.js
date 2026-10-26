@@ -93,9 +93,14 @@ function bulkAdjustInputs(){
   const subtrai = document.getElementById('ba-op').value === 'subtrair';
   return { valorRaw, fromMonth, subtrai, delta: (subtrai ? -1 : 1) * num(valorRaw) };
 }
+/* Meses que o usuário desmarcou na prévia. Guarda os desmarcados (e não os
+   marcados) de propósito: a prévia é redesenhada a cada tecla e um mês que passa a
+   caber no filtro deve entrar já marcado — o padrão é "aplica em todos". */
+let bulkAdjustDeselected = new Set();
 /* Decide o que mudaria, sem alterar nada. A prévia do modal e o "Aplicar" chamam
    exatamente esta função, então o que o usuário confere antes de salvar nunca pode
-   discordar do que acontece de fato — se mudar uma regra aqui, muda nos dois. */
+   discordar do que acontece de fato — se mudar uma regra aqui, muda nos dois.
+   `mudancas` = o que a regra permite mudar; `selecionadas` = o que ele escolheu. */
 function planBulkAdjust(kind, desc, fromMonth, delta){
   const concluido = kind==='income' ? 'Recebido' : 'Pago';
   const mudancas = [], ignorados = [];
@@ -110,7 +115,26 @@ function planBulkAdjust(kind, desc, fromMonth, delta){
       if(depois <= 0){ ignorados.push({mes, antes, motivo:'ficaria zerado'}); return; }
       mudancas.push({ mes, e, antes, depois });
     });
-  return { mudancas, ignorados, concluido };
+  const selecionadas = mudancas.filter(m=>!bulkAdjustDeselected.has(m.mes));
+  return { mudancas, selecionadas, ignorados, concluido };
+}
+function toggleBulkMonth(mes, kind, id){
+  if(bulkAdjustDeselected.has(mes)) bulkAdjustDeselected.delete(mes);
+  else bulkAdjustDeselected.add(mes);
+  renderBulkPreview(kind, id);
+  // Redesenhar troca o DOM inteiro, então devolve o foco pra caixa que acabou de ser
+  // clicada — senão o Tab recomeça do topo a cada marcação.
+  const volta = document.getElementById('ba-chk-'+mes);
+  if(volta) volta.focus();
+}
+function toggleBulkAll(kind, id){
+  const alvo = ensureMonth(currentMonth)[kind].find(x=>x.id===id);
+  if(!alvo) return;
+  const { fromMonth, delta } = bulkAdjustInputs();
+  const { mudancas, selecionadas } = planBulkAdjust(kind, alvo.desc, fromMonth, delta);
+  if(selecionadas.length) mudancas.forEach(m=>bulkAdjustDeselected.add(m.mes));
+  else mudancas.forEach(m=>bulkAdjustDeselected.delete(m.mes));
+  renderBulkPreview(kind, id);
 }
 /* Prévia ao vivo dentro do modal: redesenhada a cada tecla, mostra mês a mês como
    está e como vai ficar, mais os que ficam de fora e por quê. */
@@ -124,23 +148,39 @@ function renderBulkPreview(kind, id){
     box.innerHTML = `<p class="ba-hint">Digite um valor para ver como cada mês vai ficar.</p>`;
     return;
   }
-  const { mudancas, ignorados } = planBulkAdjust(kind, alvo.desc, fromMonth, delta);
+  const { mudancas, selecionadas, ignorados } = planBulkAdjust(kind, alvo.desc, fromMonth, delta);
   if(!mudancas.length && !ignorados.length){
     box.innerHTML = `<p class="ba-hint">Nenhum lançamento a partir de ${esc(monthLabel(fromMonth))}.</p>`;
     return;
   }
-  const somaAntes = mudancas.reduce((s,m)=>s+m.antes,0);
-  const somaDepois = mudancas.reduce((s,m)=>s+m.depois,0);
-  const resumo = mudancas.length
-    ? `${esc(mudancas.length)} mês(es) mudam · total ${esc(fmt.format(somaAntes))} → <strong>${esc(fmt.format(somaDepois))}</strong>`
-    : 'Nenhum mês seria alterado por este reajuste.';
-  const linha = (mes, direita, cls)=>
-    `<div class="ba-row${cls?' '+cls:''}"><span class="ba-mes">${esc(monthLabel(mes))}</span><span class="ba-val">${direita}</span></div>`;
+  const somaAntes = selecionadas.reduce((s,m)=>s+m.antes,0);
+  const somaDepois = selecionadas.reduce((s,m)=>s+m.depois,0);
+  // O resumo conta só o que está marcado — é o total que o "Aplicar" vai mexer.
+  let resumo;
+  if(!mudancas.length) resumo = 'Nenhum mês pode ser alterado por este reajuste.';
+  else if(!selecionadas.length) resumo = 'Nenhum mês selecionado.';
+  else resumo = `${esc(selecionadas.length)}${mudancas.length>selecionadas.length ? ' de '+esc(mudancas.length) : ''} mês(es) · total ${esc(fmt.format(somaAntes))} → <strong>${esc(fmt.format(somaDepois))}</strong>`;
+  const acao = mudancas.length
+    ? `<button type="button" class="ba-all" onclick="toggleBulkAll('${esc(kind)}','${esc(id)}')">${selecionadas.length ? 'Desmarcar todos' : 'Marcar todos'}</button>`
+    : '';
+  const valor = (antes, direita)=>
+    `<span class="ba-val"><span class="de">${esc(fmt.format(antes))}</span>${direita}</span>`;
   box.innerHTML = `
-    <p class="ba-hint">${resumo}</p>
+    <div class="ba-head"><p class="ba-hint">${resumo}</p>${acao}</div>
     <div class="ba-list">
-      ${mudancas.map(m=>linha(m.mes, `<span class="de">${esc(fmt.format(m.antes))}</span><span class="seta">→</span><span class="para">${esc(fmt.format(m.depois))}</span>`)).join('')}
-      ${ignorados.map(i=>linha(i.mes, `<span class="de">${esc(fmt.format(i.antes))}</span><span class="motivo">${esc(i.motivo)}</span>`, 'is-skip')).join('')}
+      ${mudancas.map(m=>{
+        const on = !bulkAdjustDeselected.has(m.mes);
+        return `<label class="ba-row ba-pick${on?'':' is-off'}">
+          <input type="checkbox" id="ba-chk-${esc(m.mes)}" ${on?'checked':''} onchange="toggleBulkMonth('${esc(m.mes)}','${esc(kind)}','${esc(id)}')">
+          <span class="ba-mes">${esc(monthLabel(m.mes))}</span>
+          ${valor(m.antes, `<span class="seta">→</span><span class="para">${esc(fmt.format(m.depois))}</span>`)}
+        </label>`;
+      }).join('')}
+      ${ignorados.map(i=>`<div class="ba-row is-skip">
+          <input type="checkbox" disabled aria-hidden="true" tabindex="-1">
+          <span class="ba-mes">${esc(monthLabel(i.mes))}</span>
+          ${valor(i.antes, `<span class="motivo">${esc(i.motivo)}</span>`)}
+        </div>`).join('')}
     </div>`;
 }
 function applyBulkAdjust(kind, id){
@@ -151,28 +191,36 @@ function applyBulkAdjust(kind, id){
   if(!validAmount(valorRaw)) return fieldError('ba-valor','O valor do reajuste precisa ser maior que zero.');
   if(!fromMonth) return fieldError('ba-month','Escolha a partir de qual mês o reajuste vale.');
 
-  const { mudancas, ignorados, concluido } = planBulkAdjust(kind, alvo.desc, fromMonth, delta);
+  const { mudancas, selecionadas, ignorados, concluido } = planBulkAdjust(kind, alvo.desc, fromMonth, delta);
   const pulouInvalido = ignorados.filter(i=>i.motivo==='ficaria zerado').length;
   const pulouConcluido = ignorados.length - pulouInvalido;
+  const desmarcados = mudancas.length - selecionadas.length;
 
-  if(!mudancas.length){
+  if(!selecionadas.length){
     let motivo;
-    if(pulouInvalido) motivo = `o reajuste deixaria ${pulouInvalido} lançamento(s) com valor zero ou negativo`;
+    if(desmarcados) motivo = 'nenhum mês está marcado na prévia';
+    else if(pulouInvalido) motivo = `o reajuste deixaria ${pulouInvalido} lançamento(s) com valor zero ou negativo`;
     else if(pulouConcluido) motivo = `os ${pulouConcluido} lançamento(s) desse período já estão como ${concluido}`;
     else motivo = `nenhum lançamento foi encontrado a partir de ${monthLabel(fromMonth)}`;
     showToast(`Nada alterado em "${alvo.desc}": ${motivo}.`, 'error');
     return;
   }
 
-  const snapshot = mudancas.map(m=>({ e:m.e, antes:m.antes }));
-  mudancas.forEach(m=>{ m.e.amount = m.depois; });
+  const snapshot = selecionadas.map(m=>({ e:m.e, antes:m.antes }));
+  selecionadas.forEach(m=>{ m.e.amount = m.depois; });
 
   const sinal = subtrai ? '−' : '+';
   const ressalva = [
     pulouConcluido ? `${pulouConcluido} já ${concluido.toLowerCase()}(s) mantido(s)` : null,
     pulouInvalido ? `${pulouInvalido} ignorado(s) por zerar o valor` : null,
+    desmarcados ? `${desmarcados} desmarcado(s) na prévia` : null,
   ].filter(Boolean).join(', ');
-  logAudit('Edição', `Reajuste em lote: "${alvo.desc}" ${sinal}${fmt.format(Math.abs(delta))} em ${snapshot.length} lançamento(s), a partir de ${monthLabel(fromMonth)}${ressalva?' ('+ressalva+')':''}.`);
+  // Com seleção parcial, "a partir de X" mentiria — o log nomeia os meses escolhidos.
+  const nomes = selecionadas.map(m=>monthLabel(m.mes));
+  const onde = desmarcados
+    ? 'em ' + (nomes.length > 4 ? nomes.slice(0,4).join(', ') + ` e mais ${nomes.length-4}` : nomes.join(', '))
+    : `a partir de ${monthLabel(fromMonth)}`;
+  logAudit('Edição', `Reajuste em lote: "${alvo.desc}" ${sinal}${fmt.format(Math.abs(delta))} em ${snapshot.length} lançamento(s), ${onde}${ressalva?' ('+ressalva+')':''}.`);
   closeModal();
   save(); renderMes(); renderDashboard();
   showUndoToast(`"${alvo.desc}" ${sinal}${fmt.format(Math.abs(delta))} em ${snapshot.length} mês(es)${ressalva?' · '+ressalva:''}.`, ()=>{
@@ -182,6 +230,7 @@ function applyBulkAdjust(kind, id){
 }
 
 function openEntryEditModal(kind, id){
+  bulkAdjustDeselected = new Set(); // cada abertura começa com todos os meses marcados
   const mm = ensureMonth(currentMonth);
   const e = mm[kind].find(x=>x.id===id);
   if(!e) return;
@@ -199,7 +248,7 @@ function openEntryEditModal(kind, id){
   const ajusteSection = repeticoes > 1 ? `
         <div class="modal-section">
           <h4>Reajustar em vários meses</h4>
-          <p class="small" style="margin:0;">"${esc(e.desc)}" aparece em ${esc(repeticoes)} meses de ${esc(monthLabel(currentMonth))} em diante. Some ou subtraia um valor em todos de uma vez, mesmo que cada mês tenha um valor diferente.</p>
+          <p class="small" style="margin:0;">"${esc(e.desc)}" aparece em ${esc(repeticoes)} meses de ${esc(monthLabel(currentMonth))} em diante. Some ou subtraia um valor de uma vez, mesmo que cada mês tenha um valor diferente — desmarque na prévia os meses que não devem mudar.</p>
           <div class="entry-form">
             <div class="narrow"><label for="ba-op">Operação</label><select id="ba-op" onchange="renderBulkPreview('${esc(kind)}','${esc(id)}')"><option value="somar">Somar</option><option value="subtrair">Subtrair</option></select></div>
             <div class="narrow"><label for="ba-valor">Valor</label><input type="number" step="0.01" min="0.01" id="ba-valor" placeholder="0,00" oninput="renderBulkPreview('${esc(kind)}','${esc(id)}')"></div>
