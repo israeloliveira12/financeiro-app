@@ -60,6 +60,74 @@ function renderEntryTable(tbodyId, list, kind){
   }).join('');
 }
 
+/* ---------- Reajuste em lote de um lançamento que se repete ----------
+   Existe para o caso que compromisso não cobre: uma receita que volta todo mês
+   mas com valor diferente a cada um (ex: "SIGES"). Compromisso é valor fixo, então
+   essas entradas são lançadas na mão — e um aumento de R$ 12 obrigava a editar mês
+   a mês. Aqui o vínculo entre os meses é a própria descrição, que é como o usuário
+   já identifica o lançamento. */
+function sameNameEntries(kind, desc, fromMonth){
+  const alvo = String(desc||'').trim().toLowerCase();
+  if(!alvo) return [];
+  const out = [];
+  // Só percorre meses que já existem — nunca usar ensureMonth aqui, senão varrer
+  // o histórico passaria a materializar meses vazios (ver regra lazy no CLAUDE.md).
+  Object.keys(state.months).forEach(k=>{
+    if(fromMonth && monthDiff(k, fromMonth) > 0) return; // anterior ao início: preserva
+    (state.months[k][kind]||[]).forEach(e=>{
+      if(e.commitmentId) return; // compromisso tem o fluxo próprio de alterar valor
+      if(String(e.desc||'').trim().toLowerCase() !== alvo) return;
+      out.push({ mes:k, e });
+    });
+  });
+  return out;
+}
+function applyBulkAdjust(kind, id){
+  const mm = ensureMonth(currentMonth);
+  const alvo = mm[kind].find(x=>x.id===id);
+  if(!alvo) return;
+  const valorRaw = document.getElementById('ba-valor').value;
+  const fromMonth = document.getElementById('ba-month').value;
+  if(!validAmount(valorRaw)) return fieldError('ba-valor','O valor do reajuste precisa ser maior que zero.');
+  if(!fromMonth) return fieldError('ba-month','Escolha a partir de qual mês o reajuste vale.');
+  const subtrai = document.getElementById('ba-op').value === 'subtrair';
+  const delta = (subtrai ? -1 : 1) * num(valorRaw);
+
+  const concluido = kind==='income' ? 'Recebido' : 'Pago';
+  const encontrados = sameNameEntries(kind, alvo.desc, fromMonth);
+  const snapshot = [];
+  let pulouConcluido = 0, pulouInvalido = 0;
+  encontrados.forEach(({e})=>{
+    if(e.status===concluido){ pulouConcluido++; return; }       // histórico fechado não muda
+    const novo = Math.round((num(e.amount) + delta) * 100) / 100;
+    if(novo <= 0){ pulouInvalido++; return; }                    // nunca deixa valor zerado/negativo
+    snapshot.push({ e, antes: num(e.amount) });
+    e.amount = novo;
+  });
+
+  if(!snapshot.length){
+    let motivo;
+    if(pulouInvalido) motivo = `o reajuste deixaria ${pulouInvalido} lançamento(s) com valor zero ou negativo`;
+    else if(pulouConcluido) motivo = `os ${pulouConcluido} lançamento(s) desse período já estão como ${concluido}`;
+    else motivo = `nenhum lançamento foi encontrado a partir de ${monthLabel(fromMonth)}`;
+    showToast(`Nada alterado em "${alvo.desc}": ${motivo}.`, 'error');
+    return;
+  }
+
+  const sinal = subtrai ? '−' : '+';
+  const ressalva = [
+    pulouConcluido ? `${pulouConcluido} já ${concluido.toLowerCase()}(s) mantido(s)` : null,
+    pulouInvalido ? `${pulouInvalido} ignorado(s) por zerar o valor` : null,
+  ].filter(Boolean).join(', ');
+  logAudit('Edição', `Reajuste em lote: "${alvo.desc}" ${sinal}${fmt.format(Math.abs(delta))} em ${snapshot.length} lançamento(s), a partir de ${monthLabel(fromMonth)}${ressalva?' ('+ressalva+')':''}.`);
+  closeModal();
+  save(); renderMes(); renderDashboard();
+  showUndoToast(`"${alvo.desc}" ${sinal}${fmt.format(Math.abs(delta))} em ${snapshot.length} mês(es)${ressalva?' · '+ressalva:''}.`, ()=>{
+    snapshot.forEach(s=>{ s.e.amount = s.antes; });
+    save(); renderMes(); renderDashboard();
+  });
+}
+
 function openEntryEditModal(kind, id){
   const mm = ensureMonth(currentMonth);
   const e = mm[kind].find(x=>x.id===id);
@@ -72,6 +140,21 @@ function openEntryEditModal(kind, id){
       <div id="em-card-wrap" style="display:${isCardMethod?'block':'none'};"><label>Cartão</label><select id="em-card" class="card-select">${cardOptionsHTML(e.cardId)}</select></div>
     </div>`;
   const paidLabel = kind==='income' ? 'Recebido até agora' : 'Pago até agora';
+  // Só oferece o reajuste em lote quando o lançamento de fato se repete e não vem
+  // de compromisso (esse tem o próprio "Alterar valor a partir de um mês").
+  const repeticoes = linkedCommitment ? 0 : sameNameEntries(kind, e.desc, null).length;
+  const ajusteSection = repeticoes > 1 ? `
+        <div class="modal-section">
+          <h4>Reajustar em vários meses</h4>
+          <p class="small" style="margin:0;">"${esc(e.desc)}" aparece em ${esc(repeticoes)} meses. Some ou subtraia um valor em todos de uma vez, mesmo que cada mês tenha um valor diferente.</p>
+          <div class="entry-form">
+            <div class="narrow"><label for="ba-op">Operação</label><select id="ba-op"><option value="somar">Somar</option><option value="subtrair">Subtrair</option></select></div>
+            <div class="narrow"><label for="ba-valor">Valor</label><input type="number" step="0.01" min="0.01" id="ba-valor" placeholder="0,00"></div>
+            <div><label for="ba-month">A partir de</label><input type="month" id="ba-month" value="${esc(currentMonth)}"></div>
+            <div class="btn-wrap"><button class="btn" onclick="applyBulkAdjust('${esc(kind)}','${esc(id)}')">Aplicar</button></div>
+          </div>
+          <p class="small" style="margin-top:8px;">Os meses já marcados como "${kind==='income'?'Recebido':'Pago'}" não mudam. Aplicar vale só para o reajuste — o que estiver digitado acima não é salvo junto.</p>
+        </div>` : '';
   const html = `
     <div class="modal-overlay">
       <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="em-title">
@@ -86,6 +169,7 @@ function openEntryEditModal(kind, id){
           <div><label for="em-paid">${esc(paidLabel)}</label><input type="number" step="0.01" min="0" id="em-paid" value="${esc(e.paidAmount||0)}"></div>
           <div><label for="em-move-month">Mover para o mês</label><input type="month" id="em-move-month" value="${esc(currentMonth)}"></div>
         </div>
+        ${ajusteSection}
         <div class="modal-close-row">
           <button class="btn secondary" onclick="closeModal()">Cancelar</button>
           <button class="btn" onclick="saveEntryEdit('${esc(kind)}','${esc(id)}')" style="margin-left:8px;">Salvar</button>
