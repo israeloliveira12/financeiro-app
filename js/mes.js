@@ -82,30 +82,76 @@ function sameNameEntries(kind, desc, fromMonth){
   });
   return out;
 }
+// Lê os três campos do reajuste de uma vez só — a prévia e o "Aplicar" leem iguais.
+function bulkAdjustInputs(){
+  const valorRaw = document.getElementById('ba-valor').value;
+  const fromMonth = document.getElementById('ba-month').value;
+  const subtrai = document.getElementById('ba-op').value === 'subtrair';
+  return { valorRaw, fromMonth, subtrai, delta: (subtrai ? -1 : 1) * num(valorRaw) };
+}
+/* Decide o que mudaria, sem alterar nada. A prévia do modal e o "Aplicar" chamam
+   exatamente esta função, então o que o usuário confere antes de salvar nunca pode
+   discordar do que acontece de fato — se mudar uma regra aqui, muda nos dois. */
+function planBulkAdjust(kind, desc, fromMonth, delta){
+  const concluido = kind==='income' ? 'Recebido' : 'Pago';
+  const mudancas = [], ignorados = [];
+  sameNameEntries(kind, desc, fromMonth)
+    .sort((a,b)=>a.mes.localeCompare(b.mes))
+    .forEach(({mes,e})=>{
+      const antes = num(e.amount);
+      // histórico fechado não muda
+      if(e.status===concluido){ ignorados.push({mes, antes, motivo:'já '+concluido.toLowerCase()}); return; }
+      const depois = Math.round((antes + delta) * 100) / 100;
+      // nunca deixa valor zerado/negativo
+      if(depois <= 0){ ignorados.push({mes, antes, motivo:'ficaria zerado'}); return; }
+      mudancas.push({ mes, e, antes, depois });
+    });
+  return { mudancas, ignorados, concluido };
+}
+/* Prévia ao vivo dentro do modal: redesenhada a cada tecla, mostra mês a mês como
+   está e como vai ficar, mais os que ficam de fora e por quê. */
+function renderBulkPreview(kind, id){
+  const box = document.getElementById('ba-preview');
+  if(!box) return;
+  const alvo = ensureMonth(currentMonth)[kind].find(x=>x.id===id);
+  if(!alvo) return;
+  const { valorRaw, fromMonth, delta } = bulkAdjustInputs();
+  if(!validAmount(valorRaw) || !fromMonth){
+    box.innerHTML = `<p class="ba-hint">Digite um valor para ver como cada mês vai ficar.</p>`;
+    return;
+  }
+  const { mudancas, ignorados } = planBulkAdjust(kind, alvo.desc, fromMonth, delta);
+  if(!mudancas.length && !ignorados.length){
+    box.innerHTML = `<p class="ba-hint">Nenhum lançamento a partir de ${esc(monthLabel(fromMonth))}.</p>`;
+    return;
+  }
+  const somaAntes = mudancas.reduce((s,m)=>s+m.antes,0);
+  const somaDepois = mudancas.reduce((s,m)=>s+m.depois,0);
+  const resumo = mudancas.length
+    ? `${esc(mudancas.length)} mês(es) mudam · total ${esc(fmt.format(somaAntes))} → <strong>${esc(fmt.format(somaDepois))}</strong>`
+    : 'Nenhum mês seria alterado por este reajuste.';
+  const linha = (mes, direita, cls)=>
+    `<div class="ba-row${cls?' '+cls:''}"><span class="ba-mes">${esc(monthLabel(mes))}</span><span class="ba-val">${direita}</span></div>`;
+  box.innerHTML = `
+    <p class="ba-hint">${resumo}</p>
+    <div class="ba-list">
+      ${mudancas.map(m=>linha(m.mes, `<span class="de">${esc(fmt.format(m.antes))}</span><span class="seta">→</span><span class="para">${esc(fmt.format(m.depois))}</span>`)).join('')}
+      ${ignorados.map(i=>linha(i.mes, `<span class="de">${esc(fmt.format(i.antes))}</span><span class="motivo">${esc(i.motivo)}</span>`, 'is-skip')).join('')}
+    </div>`;
+}
 function applyBulkAdjust(kind, id){
   const mm = ensureMonth(currentMonth);
   const alvo = mm[kind].find(x=>x.id===id);
   if(!alvo) return;
-  const valorRaw = document.getElementById('ba-valor').value;
-  const fromMonth = document.getElementById('ba-month').value;
+  const { valorRaw, fromMonth, subtrai, delta } = bulkAdjustInputs();
   if(!validAmount(valorRaw)) return fieldError('ba-valor','O valor do reajuste precisa ser maior que zero.');
   if(!fromMonth) return fieldError('ba-month','Escolha a partir de qual mês o reajuste vale.');
-  const subtrai = document.getElementById('ba-op').value === 'subtrair';
-  const delta = (subtrai ? -1 : 1) * num(valorRaw);
 
-  const concluido = kind==='income' ? 'Recebido' : 'Pago';
-  const encontrados = sameNameEntries(kind, alvo.desc, fromMonth);
-  const snapshot = [];
-  let pulouConcluido = 0, pulouInvalido = 0;
-  encontrados.forEach(({e})=>{
-    if(e.status===concluido){ pulouConcluido++; return; }       // histórico fechado não muda
-    const novo = Math.round((num(e.amount) + delta) * 100) / 100;
-    if(novo <= 0){ pulouInvalido++; return; }                    // nunca deixa valor zerado/negativo
-    snapshot.push({ e, antes: num(e.amount) });
-    e.amount = novo;
-  });
+  const { mudancas, ignorados, concluido } = planBulkAdjust(kind, alvo.desc, fromMonth, delta);
+  const pulouInvalido = ignorados.filter(i=>i.motivo==='ficaria zerado').length;
+  const pulouConcluido = ignorados.length - pulouInvalido;
 
-  if(!snapshot.length){
+  if(!mudancas.length){
     let motivo;
     if(pulouInvalido) motivo = `o reajuste deixaria ${pulouInvalido} lançamento(s) com valor zero ou negativo`;
     else if(pulouConcluido) motivo = `os ${pulouConcluido} lançamento(s) desse período já estão como ${concluido}`;
@@ -113,6 +159,9 @@ function applyBulkAdjust(kind, id){
     showToast(`Nada alterado em "${alvo.desc}": ${motivo}.`, 'error');
     return;
   }
+
+  const snapshot = mudancas.map(m=>({ e:m.e, antes:m.antes }));
+  mudancas.forEach(m=>{ m.e.amount = m.depois; });
 
   const sinal = subtrai ? '−' : '+';
   const ressalva = [
@@ -148,12 +197,13 @@ function openEntryEditModal(kind, id){
           <h4>Reajustar em vários meses</h4>
           <p class="small" style="margin:0;">"${esc(e.desc)}" aparece em ${esc(repeticoes)} meses. Some ou subtraia um valor em todos de uma vez, mesmo que cada mês tenha um valor diferente.</p>
           <div class="entry-form">
-            <div class="narrow"><label for="ba-op">Operação</label><select id="ba-op"><option value="somar">Somar</option><option value="subtrair">Subtrair</option></select></div>
-            <div class="narrow"><label for="ba-valor">Valor</label><input type="number" step="0.01" min="0.01" id="ba-valor" placeholder="0,00"></div>
-            <div><label for="ba-month">A partir de</label><input type="month" id="ba-month" value="${esc(currentMonth)}"></div>
+            <div class="narrow"><label for="ba-op">Operação</label><select id="ba-op" onchange="renderBulkPreview('${esc(kind)}','${esc(id)}')"><option value="somar">Somar</option><option value="subtrair">Subtrair</option></select></div>
+            <div class="narrow"><label for="ba-valor">Valor</label><input type="number" step="0.01" min="0.01" id="ba-valor" placeholder="0,00" oninput="renderBulkPreview('${esc(kind)}','${esc(id)}')"></div>
+            <div><label for="ba-month">A partir de</label><input type="month" id="ba-month" value="${esc(currentMonth)}" onchange="renderBulkPreview('${esc(kind)}','${esc(id)}')"></div>
             <div class="btn-wrap"><button class="btn" onclick="applyBulkAdjust('${esc(kind)}','${esc(id)}')">Aplicar</button></div>
           </div>
-          <p class="small" style="margin-top:8px;">Os meses já marcados como "${kind==='income'?'Recebido':'Pago'}" não mudam. Aplicar vale só para o reajuste — o que estiver digitado acima não é salvo junto.</p>
+          <div class="ba-preview" id="ba-preview"></div>
+          <p class="small" style="margin-top:8px;">Aplicar vale só para o reajuste — o que estiver digitado acima não é salvo junto.</p>
         </div>` : '';
   const html = `
     <div class="modal-overlay">
@@ -178,6 +228,7 @@ function openEntryEditModal(kind, id){
     </div>`;
   document.getElementById('modal-root').innerHTML = html;
   refreshCardSelects();
+  if(repeticoes > 1) renderBulkPreview(kind, id);
   focusModal();
 }
 
