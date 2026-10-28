@@ -246,9 +246,9 @@ function openEntryEditModal(kind, id){
   // de compromisso (esse tem o próprio "Alterar valor a partir de um mês").
   const repeticoes = linkedCommitment ? 0 : sameNameEntries(kind, e.desc, currentMonth).length;
   const ajusteSection = repeticoes > 1 ? `
-        <div class="modal-section">
+        <div class="modal-section ba-section">
           <h4>Reajustar em vários meses</h4>
-          <p class="small" style="margin:0;">"${esc(e.desc)}" aparece em ${esc(repeticoes)} meses de ${esc(monthLabel(currentMonth))} em diante. Some ou subtraia um valor de uma vez, mesmo que cada mês tenha um valor diferente — desmarque na prévia os meses que não devem mudar.</p>
+          <p class="small" style="margin:0;">"${esc(e.desc)}" aparece em ${esc(repeticoes)} meses de ${esc(monthLabel(currentMonth))} em diante. Some ou subtraia um valor em todos de uma vez; desmarque abaixo os que não devem mudar.</p>
           <div class="entry-form">
             <div class="narrow"><label for="ba-op">Operação</label><select id="ba-op" onchange="renderBulkPreview('${esc(kind)}','${esc(id)}')"><option value="somar">Somar</option><option value="subtrair">Subtrair</option></select></div>
             <div class="narrow"><label for="ba-valor">Valor</label><input type="number" step="0.01" min="0.01" id="ba-valor" placeholder="0,00" oninput="renderBulkPreview('${esc(kind)}','${esc(id)}')"></div>
@@ -256,11 +256,11 @@ function openEntryEditModal(kind, id){
             <div class="btn-wrap"><button class="btn" onclick="applyBulkAdjust('${esc(kind)}','${esc(id)}')">Aplicar</button></div>
           </div>
           <div class="ba-preview" id="ba-preview"></div>
-          <p class="small" style="margin-top:8px;">Meses anteriores a ${esc(monthLabel(currentMonth))} nunca mudam. Aplicar vale só para o reajuste — o que estiver digitado acima não é salvo junto.</p>
+          <p class="small" style="margin-top:8px;">Meses anteriores nunca mudam. "Aplicar" vale só para o reajuste.</p>
         </div>` : '';
   const html = `
     <div class="modal-overlay">
-      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="em-title">
+      <div class="modal-box${ajusteSection?' has-ba':''}" role="dialog" aria-modal="true" aria-labelledby="em-title">
         <h3 id="em-title">Editar lançamento</h3>
         <p class="modal-sub">${linkedCommitment ? 'Este lançamento vem de um compromisso fixo — as mudanças aqui valem só para ' + esc(monthLabel(currentMonth)) + '.' : esc(monthLabel(currentMonth))}</p>
         <div class="entry-form" style="margin-top:0;">

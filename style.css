@@ -124,12 +124,27 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap;}
 .modal-section{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;}
 .modal-section h4{margin:0 0 8px;font-size:12.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft);}
 /* Previa do reajuste em lote: mes a mes, como esta e como fica. */
+/* Modal que carrega a previa vira coluna flex: a LISTA de meses e a unica coisa
+   que encolhe, entao o titulo, os campos e os botoes Cancelar/Salvar continuam
+   visiveis e so a lista rola. Sem isso o modal inteiro tinha que rolar junto,
+   ganhava uma segunda barra aninhada e os botoes saiam da tela. So vale pra este
+   modal (classe has-ba), os outros do app seguem como sempre foram. */
+.modal-box.has-ba{display:flex;flex-direction:column;max-height:90dvh;overflow-y:auto;}
+.modal-box.has-ba > *,
+.modal-box.has-ba .ba-section > *,
+.modal-box.has-ba .ba-preview > *{flex-shrink:0;}
+.modal-box.has-ba .ba-section,
+.modal-box.has-ba .ba-preview{display:flex;flex-direction:column;}
+.modal-box.has-ba .ba-section,
+.modal-box.has-ba .ba-preview,
+.modal-box.has-ba .ba-list{flex:1 1 auto;min-height:0;}
+.modal-box.has-ba .ba-list{max-height:none;min-height:76px;}
 .ba-preview{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;}
 .ba-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 8px;}
 .ba-hint{font-size:11.5px;color:var(--ink-soft);margin:0;}
 .ba-all{all:unset;cursor:pointer;font-size:11.5px;font-weight:600;color:var(--brand);flex-shrink:0;}
 .ba-all:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:3px;}
-.ba-list{max-height:188px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;}
+.ba-list{max-height:min(188px,30vh);overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;}
 .ba-row{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:2px 0;}
 .ba-row input[type=checkbox]{width:15px;height:15px;margin:0;flex-shrink:0;accent-color:var(--brand);cursor:pointer;}
 .ba-row input[type=checkbox]:disabled{cursor:default;opacity:.4;}
@@ -139,7 +154,7 @@ label.ba-pick{cursor:pointer;margin:0;font-size:12.5px;text-transform:none;lette
 .ba-row.is-off .para{font-weight:400;}
 /* No celular a linha e o alvo de toque pra marcar/desmarcar o mes — precisa de folga. */
 @media (max-width:640px){
-  .ba-list{max-height:320px;gap:0;}
+  .ba-list{max-height:min(320px,38dvh);gap:0;}
   .ba-row{padding:8px 0;}
   .ba-row + .ba-row{border-top:1px solid var(--line);}
 }
@@ -345,7 +360,15 @@ tr.audit-daygroup:first-child td{padding-top:2px;}
   .card .value{font-size:17px;}
   .nav-strip .cur{min-width:0;font-size:14px;}
   .ano-totals{margin-left:0;flex-basis:100%;}
-  .modal-box{padding:18px 16px;max-height:90vh;}
+  /* max-height sem overflow fazia o conteudo vazar por cima da pagina (bug real,
+     visivel quando a previa do reajuste deixou o modal alto). dvh conta a barra
+     de endereco do celular; se o navegador nao suportar, a regra cai e o overlay
+     rola o modal inteiro como no desktop — em nenhum dos casos vaza. */
+  /* No celular os 5vh de respiro em cima e embaixo custam caro: aperta o conteudo
+     util do modal sem ganhar nada. 16px ja separa o suficiente da borda. */
+  .modal-overlay{padding:16px;}
+  .modal-box{padding:18px 16px;max-height:90dvh;overflow-y:auto;}
+  .modal-box.has-ba{max-height:calc(100dvh - 32px);}
 
   /* Tabelas viram "cartões" empilhados, sem rolagem horizontal forçada */
   .table-scroll table{width:100%;}
