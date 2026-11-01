@@ -163,17 +163,37 @@ function cardInvoiceTotals(mm, cardId){
   return { pago, lancado, pendente, total: pago+lancado, previsto: pago+lancado+pendente };
 }
 function cardLimitUsage(cardId){
-  // Quanto do limite já está comprometido de verdade: só "Lançado"/"Parcial" contam
-  // (já foi gasto de fato, mesmo que em fatura futura) — "Pendente" é só orçamento,
-  // ainda não virou gasto real, então não consome limite até ser lançado.
+  /* Quanto do limite está comprometido de verdade. Conta FATURA POR FATURA
+     (cartão + mês) e só depois soma, porque um estorno abate os gastos da fatura
+     DELE — somando tudo de uma vez, um crédito antigo ficaria abatendo compra
+     nova pra sempre.
+
+     Gasto (valor positivo): "Lançado"/"Parcial" prendem limite; "Pendente" é só
+     orçamento e "Pago" já liberou.
+
+     Estorno (valor negativo): libera limite assim que entra na fatura e
+     **continua liberando depois de quitado** — o dinheiro voltou pro cartão, não
+     é algo que se desfaz quando a fatura fecha. Antes ele só contava em
+     "Lançado", então marcar como Pago fazia a liberação evaporar e o limite usado
+     subir de volta (bug real relatado pelo usuário). "Pendente" segue de fora:
+     aí o estorno ainda é expectativa, não apareceu na fatura.
+
+     O piso por fatura existe pra fechar a conta quando a fatura inteira é paga:
+     os gastos saem, o estorno fica, e sem o piso a fatura passaria a devolver
+     limite a mais do que o cartão tem. */
   let used = 0;
   Object.keys(state.months).forEach(k=>{
     const mm = state.months[k];
+    let fatura = 0;
     [...mm.fixed, ...mm.variable].forEach(e=>{
       if(!((e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId)) return;
-      if(e.status==='Lançado') used += num(e.amount);
-      else if(e.status==='Parcial') used += remaining(e);
+      if(num(e.amount) < 0){
+        if(e.status !== 'Pendente') fatura += num(e.amount);
+      }
+      else if(e.status==='Lançado') fatura += num(e.amount);
+      else if(e.status==='Parcial') fatura += remaining(e);
     });
+    used += Math.max(0, fatura);
   });
   return used;
 }
