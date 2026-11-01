@@ -9,11 +9,36 @@
   --brand: #0E7A5F;
   --brand-soft: #E4F2EC;
   --warn: #B8792B;
+  --warn-ink: #8F5C1A;
   --warn-soft: #FBF0DF;
   --bad: #B8433A;
   --bad-soft: #FBEAE8;
   --info: #3A5BC7;
   --info-soft: #E6ECFB;
+  /* Fundo sutil DENTRO de um painel (legenda de status, item de menu, destaque
+     da faixa de números) e trilho de barra — antes eram seis cinzas cravados
+     à mão (#F5F7F6, #F7F9F8, #FBFCFC, #F4F6F5, #E4E9E7, #EEF2F0) que não tinham
+     como virar escuro. */
+  --panel-2: #F5F7F6;
+  --track: #EEF2F0;
+  --line-soft: #EFF2F0;
+  --field-bg: #FFFFFF;
+  --ink-faint: #B7C0BC;
+  /* --brand clareia no tema escuro pra funcionar como TEXTO sobre painel escuro,
+     o que derrubaria o contraste se fosse usado como FUNDO de botão. Por isso
+     fundo sólido tem token próprio, que não muda entre os temas. */
+  --brand-solid: #0E7A5F;
+  --brand-hover: #0C6650;
+  --bad-solid: #B8433A;
+  --bad-hover: #9C362E;
+  --on-solid: #FFFFFF;
+  --purple: #6E3FAE;
+  --purple-soft: #F1E9FB;
+  --shadow-sm: 0 1px 2px rgba(16,24,21,.05);
+  --shadow: 0 1px 3px rgba(16,24,21,.05);
+  --shadow-md: 0 6px 20px rgba(16,24,21,.08);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,.3);
+  --overlay: rgba(10,16,13,.5);
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Consolas, monospace;
   --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --radius: 10px;
@@ -29,12 +54,12 @@ body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);}
 .nav{margin-top:26px;display:flex;flex-direction:column;gap:2px;}
 .nav button{all:unset;cursor:pointer;padding:10px 12px;border-radius:8px;font-size:14px;color:var(--sidebar-ink);}
 .nav button:hover{background:#20302A;}
-.nav button.active{background:var(--brand);color:#fff;font-weight:600;}
-.sidebar-foot{margin-top:auto;font-size:11px;color:#5F7167;padding:0 8px;line-height:1.5;}
+.nav button.active{background:var(--brand-solid);color:var(--on-solid);font-weight:600;}
+.sidebar-foot{margin-top:auto;font-size:11px;color:#8FA399;padding:0 8px;line-height:1.5;}
 
 .user-chip{display:flex;align-items:center;gap:9px;padding:8px;margin-top:16px;border-radius:10px;background:#1E2B25;}
 .user-avatar,.user-avatar-fallback{width:30px;height:30px;border-radius:50%;flex-shrink:0;object-fit:cover;}
-.user-avatar-fallback{background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+.user-avatar-fallback{background:var(--brand-solid);color:var(--on-solid);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
 .user-info{min-width:0;flex:1;}
 .user-name{font-size:12.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .user-email{font-size:10.5px;color:#7E9188;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -57,7 +82,7 @@ h1{font-size:22px;margin:0 0 4px;}
 .subtitle{color:var(--ink-soft);font-size:13.5px;margin:0 0 22px;max-width:760px;line-height:1.5;}
 
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:20px;}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;min-width:0;box-shadow:0 1px 2px rgba(16,24,21,.05);}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;min-width:0;box-shadow:var(--shadow-sm);}
 .card .label{font-size:11.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;margin-bottom:7px;}
 .card .value{font-family:var(--mono);font-size:19px;font-weight:600;overflow-wrap:break-word;}
 .value.pos{color:var(--brand);}
@@ -68,18 +93,18 @@ h1{font-size:22px;margin:0 0 4px;}
    largura mínima do próprio conteúdo, e um nome comprido vaza da tela. */
 .grid2-equal > *{min-width:0;}
 
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:0 1px 3px rgba(16,24,21,.05);}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:var(--shadow);}
 .panel h2{font-size:15px;margin:0 0 4px;}
 .panel .panel-hint{font-weight:400;color:var(--ink-soft);font-size:12px;margin:0 0 14px;}
 .saude-alert{font-size:11.5px;color:var(--bad);background:var(--bad-soft);border-radius:7px;padding:7px 9px;margin-top:2px;}
 
-.tl-bar-wrap{background:#EEF2F0;border-radius:6px;height:20px;position:relative;overflow:hidden;}
+.tl-bar-wrap{background:var(--track);border-radius:6px;height:20px;position:relative;overflow:hidden;}
 .tl-bar{height:100%;background:var(--brand);border-radius:6px 0 0 6px;transition:width .2s;}
 .tl-bar.over{background:var(--bad);}
 
 table{width:100%;border-collapse:collapse;font-size:13.5px;table-layout:auto;}
 th{text-align:left;color:var(--ink-soft);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:8px 7px;border-bottom:1px solid var(--line);}
-td{padding:9px 7px;border-bottom:1px solid #EFF2F0;vertical-align:middle;word-break:normal;overflow-wrap:break-word;}
+td{padding:9px 7px;border-bottom:1px solid var(--line-soft);vertical-align:middle;word-break:normal;overflow-wrap:break-word;}
 tr:last-child td{border-bottom:none;}
 td.num{font-family:var(--mono);text-align:right;white-space:nowrap;}
 .small{font-size:11.5px;color:var(--ink-soft);}
@@ -101,22 +126,30 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap;}
   cursor:pointer;user-select:none;white-space:nowrap;min-width:62px;text-align:center;
 }
 .badge:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
-.badge.pendente{background:var(--warn-soft);color:var(--warn);}
+.badge.pendente{background:var(--warn-soft);color:var(--warn-ink);}
 .badge.recebido, .badge.pago{background:var(--brand-soft);color:var(--brand);}
 .badge.lancado{background:var(--info-soft);color:var(--info);}
-.badge.parcial{background:#F1E9FB;color:#6E3FAE;}
+.badge.parcial{background:var(--purple-soft);color:var(--purple);}
 .badge.excluido{background:var(--bad-soft);color:var(--bad);}
 .progress-note{font-size:11px;color:var(--ink-soft);margin-top:3px;}
+/* Rodapé e detalhe do painel "Parcelas em andamento". */
+.debt-sub{font-family:var(--mono);font-size:10.5px;color:var(--ink-soft);margin-top:4px;}
+.debt-more{display:inline-block;margin:2px 0 4px;}
+.debt-total{display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:var(--bg);border-radius:8px;padding:9px 12px;margin-top:10px;font-size:12px;color:var(--ink-soft);}
+.debt-total-val{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink);}
+.debt-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+.debt-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip-soft{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--bg);color:var(--ink-soft);border:1px solid var(--line);}
 
-.modal-overlay{position:fixed;inset:0;background:rgba(10,16,13,.5);display:flex;align-items:flex-start;justify-content:center;z-index:100;padding:5vh 16px;overflow-y:auto;}
-.modal-box{background:#fff;border-radius:14px;padding:24px 26px;max-width:520px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.3);}
+.modal-overlay{position:fixed;inset:0;background:var(--overlay);display:flex;align-items:flex-start;justify-content:center;z-index:100;padding:5vh 16px;overflow-y:auto;}
+.modal-box{background:var(--panel);border-radius:14px;padding:24px 26px;max-width:520px;width:100%;box-shadow:var(--shadow-lg);}
 .modal-box h3{margin:0 0 4px;font-size:16px;}
 .modal-box .modal-sub{color:var(--ink-soft);font-size:12.5px;margin:0 0 16px;}
 
 /* Tela de carregamento entre o login e os dados chegarem da nuvem */
 .modal-overlay.is-loading{align-items:center;background:var(--bg);}
 .boot-card{display:flex;align-items:center;gap:12px;font-size:14px;color:var(--ink-soft);
-  background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 20px;box-shadow:0 6px 20px rgba(16,24,21,.08);}
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 20px;box-shadow:var(--shadow-md);}
 .spinner{width:16px;height:16px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--brand);
   animation:spin .7s linear infinite;flex-shrink:0;}
 @keyframes spin{to{transform:rotate(360deg);}}
@@ -165,24 +198,24 @@ label.ba-pick{cursor:pointer;margin:0;font-size:12.5px;text-transform:none;lette
 .ba-row.is-skip .de{text-decoration:line-through;}
 .ba-val .motivo{font-family:var(--sans);font-size:11px;color:var(--ink-soft);margin-left:8px;}
 .modal-close-row{display:flex;justify-content:flex-end;margin-top:18px;}
-.skip-chip{display:inline-flex;align-items:center;gap:6px;background:#F0F3F1;border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;margin:3px 6px 3px 0;}
+.skip-chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel-2);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;margin:3px 6px 3px 0;}
 .skip-chip button{all:unset;cursor:pointer;color:var(--bad);display:inline-flex;align-items:center;vertical-align:middle;}
 
 .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--sidebar);color:#fff;padding:12px 14px 12px 18px;border-radius:10px;display:flex;align-items:center;gap:16px;box-shadow:0 12px 30px rgba(0,0,0,.28);z-index:200;font-size:13.5px;max-width:90vw;}
 .toast-undo{all:unset;cursor:pointer;color:#7FD9BC;font-weight:700;font-size:13px;white-space:nowrap;}
 .toast-undo:hover{color:#fff;}
-.toast.is-error{background:var(--bad);}
+.toast.is-error{background:var(--bad-solid);}
 
 /* Campo reprovado na validação — antes o clique em "Adicionar" simplesmente
    não fazia nada e parecia botão quebrado. */
 input.has-error, select.has-error{border-color:var(--bad);box-shadow:0 0 0 3px var(--bad-soft);}
 
-.status-legend{display:flex;flex-wrap:wrap;gap:14px 20px;font-size:11.5px;color:var(--ink-soft);margin:10px 0 22px;align-items:center;background:#F5F7F6;border-radius:8px;padding:12px 14px;}
+.status-legend{display:flex;flex-wrap:wrap;gap:14px 20px;font-size:11.5px;color:var(--ink-soft);margin:10px 0 22px;align-items:center;background:var(--panel-2);border-radius:8px;padding:12px 14px;}
 .status-legend .badge{pointer-events:none;margin-right:6px;}
-.legend-info-btn{all:unset;cursor:pointer;width:20px;height:20px;border-radius:50%;background:#EEF1F0;color:var(--ink-soft);font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.legend-info-btn{all:unset;cursor:pointer;width:20px;height:20px;border-radius:50%;background:var(--bg);color:var(--ink-soft);font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .legend-info-btn:hover{background:var(--brand-soft);color:var(--brand);}
 
-.backup-alert{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:10px;}
+.backup-alert{background:var(--warn-soft);color:var(--warn-ink);border-radius:8px;padding:10px 12px;font-size:12.5px;margin-top:10px;}
 
 .row-actions{white-space:nowrap;}
 .row-actions button{all:unset;cursor:pointer;color:var(--ink-soft);padding:4px 5px;display:inline-flex;align-items:center;vertical-align:middle;}
@@ -195,32 +228,96 @@ input.has-error, select.has-error{border-color:var(--bad);box-shadow:0 0 0 3px v
 .entry-form > div.btn-wrap{flex:0 0 auto;}
 label{display:block;font-size:10.5px;color:var(--ink-soft);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
 input[type=text], input[type=number], input[type=month], input[type=password], input[type=email], select{
-  width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:var(--sans);background:#fff;}
+  width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:7px;font-size:13px;font-family:var(--sans);background:var(--field-bg);color:var(--ink);}
 input[type=number]{font-family:var(--mono);}
 input.edit-input{padding:5px 7px;font-size:12.5px;}
 .checkline{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-top:8px;}
-button.btn{all:unset;box-sizing:border-box;cursor:pointer;background:var(--brand);color:#fff;padding:9px 16px;border-radius:7px;font-size:13px;font-weight:600;text-align:center;white-space:nowrap;}
-button.btn:hover{background:#0C6650;}
-button.btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--line);}
-button.btn.secondary:hover{background:#F4F6F5;}
-button.btn.danger{background:var(--bad);}
-button.btn.danger:hover{background:#9C362E;}
+button.btn{all:unset;box-sizing:border-box;cursor:pointer;background:var(--brand-solid);color:var(--on-solid);padding:9px 16px;border-radius:7px;font-size:13px;font-weight:600;text-align:center;white-space:nowrap;}
+button.btn:hover{background:var(--brand-hover);}
+button.btn.secondary{background:var(--panel);color:var(--ink);border:1px solid var(--line);}
+button.btn.secondary:hover{background:var(--panel-2);}
+button.btn.danger{background:var(--bad-solid);}
+button.btn.danger:hover{background:var(--bad-hover);}
 
-.mode-toggle{display:inline-flex;flex-wrap:wrap;background:#E4E9E7;border-radius:9px;padding:3px;gap:2px;margin-bottom:20px;}
+.mode-toggle{display:inline-flex;flex-wrap:wrap;background:var(--track);border-radius:9px;padding:3px;gap:2px;margin-bottom:20px;}
 .mode-toggle button{all:unset;cursor:pointer;padding:7px 18px;border-radius:7px;font-size:13px;font-weight:600;color:var(--ink-soft);}
-.mode-toggle button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.mode-toggle button.active{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14);}
+.mode-toggle.compact{margin-bottom:0;flex-shrink:0;}
+.mode-toggle.compact button{padding:6px 13px;font-size:12px;}
+/* Cabeçalho de painel com controle à direita (gráfico de 12 meses). */
+.panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+.panel-head-t{min-width:0;}
 .mes-section-toggle{display:none;}
+/* Barra de filtro do Mensal (Em aberto / Todos) e o rodapé "N pagos · R$ X" que
+   cada tabela ganha quando o filtro esconde algo. */
+/* Faixa única de números do Mensal: um painel só dividido por linhas verticais,
+   no lugar de seis cards soltos de mesmo peso. */
+.stat-strip{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px;}
+.stat-strip .stat{flex:1 1 0;min-width:0;padding:12px 15px;border-left:1px solid var(--line);}
+.stat-strip .stat:first-child{border-left:0;}
+.stat-strip .stat.key{background:var(--panel-2);}
+.stat-strip .label{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;overflow-wrap:break-word;}
+.stat-strip .value{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:4px;overflow-wrap:break-word;}
+.stat-strip .stat.key .value{font-size:18px;}
+.stat-strip .delta{font-size:10.5px;margin-top:3px;}
+/* Seis colunas numa linha só funcionam no desktop. Abaixo de 960px cada coluna
+   fica estreita demais e o valor quebra no meio do número ("R$ 10./510/,00"),
+   então a faixa passa a embrulhar: 3 por linha no tablet, 2 no celular. */
+@media(max-width:960px){
+  .stat-strip{flex-wrap:wrap;}
+  .stat-strip .stat{flex:1 1 33.333%;max-width:33.333%;border-top:1px solid var(--line);}
+  .stat-strip .stat:nth-child(-n+3){border-top:0;}
+  .stat-strip .stat:nth-child(3n+1){border-left:0;}
+}
+@media(max-width:640px){
+  .stat-strip .stat{flex:1 1 50%;max-width:50%;padding:10px 12px;border-left:1px solid var(--line);border-top:1px solid var(--line);}
+  .stat-strip .stat:nth-child(-n+2){border-top:0;}
+  .stat-strip .stat:nth-child(2n+1){border-left:0;}
+  .stat-strip .label{font-size:10px;}
+  .stat-strip .value{font-size:14px;}
+  .stat-strip .stat.key .value{font-size:16px;}
+}
+
+/* Botão que abre o formulário de inclusão no lugar. */
+.addbar{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;margin-top:12px;padding:10px;border:1px dashed var(--line);border-radius:9px;color:var(--ink-soft);font-size:12.5px;font-weight:600;}
+.addbar:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft);}
+.addbar.open{border-style:solid;border-color:var(--line);background:var(--bg);}
+.addbar:focus-visible{outline:2px solid var(--brand);outline-offset:2px;}
+.add-wrap .entry-form{margin-top:12px;}
+
+/* "Análise do mês": os dois painéis de leitura desceram pra depois das tabelas
+   e abrem sob demanda — a tarefa (lançar e marcar) vem primeiro. */
+.mes-analise{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:20px;}
+.mes-analise > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px;}
+.mes-analise > summary::-webkit-details-marker{display:none;}
+.mes-analise > summary:focus-visible{outline:2px solid var(--brand);outline-offset:-2px;border-radius:var(--radius);}
+.mes-analise .caret{color:var(--ink-soft);flex-shrink:0;transition:transform .15s ease;}
+.mes-analise[open] .caret{transform:rotate(90deg);}
+.mes-analise-t{font-size:15px;font-weight:600;}
+.mes-analise #mes-secondary-grid{margin:0;padding:0 20px 20px;}
+.mes-analise .panel{margin-bottom:0;}
+
+.mes-filterbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+.mes-filterbar .mode-toggle{margin-bottom:0;}
+.mes-filterbar .mode-toggle button{padding:6px 15px;font-size:12.5px;}
+.resolved-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-soft);}
+.resolved-val{font-family:var(--mono);}
+.linklike{all:unset;cursor:pointer;color:var(--brand);font-weight:600;font-size:11.5px;}
+.linklike:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:3px;}
+/* No celular o "mostrar" tinha 16px de altura — pequeno pro dedo. O padding
+   negativo amplia a área de toque pra ~32px sem mudar nada do visual. */
+@media(max-width:640px){ .linklike{padding:8px 4px;margin:-8px -4px;} }
 .section-subhead{margin:16px 0 4px;font-size:13px;}
 
 .more-menu-list{display:flex;flex-direction:column;gap:6px;margin:14px 0;}
-.more-menu-item{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:#F7F9F8;color:var(--ink);font-size:14px;font-weight:600;width:100%;}
+.more-menu-item{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:var(--panel-2);color:var(--ink);font-size:14px;font-weight:600;width:100%;}
 .more-menu-item:hover{background:var(--brand-soft);color:var(--brand);}
 .more-menu-item svg{flex-shrink:0;color:var(--ink-soft);}
 
 .nav-strip{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
 .ano-totals{margin-left:auto;}
-.nav-strip button.step{all:unset;cursor:pointer;width:30px;height:30px;border-radius:8px;background:#fff;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--ink);}
-.nav-strip button.step:hover{background:#F4F6F5;}
+.nav-strip button.step{all:unset;cursor:pointer;width:30px;height:30px;border-radius:8px;background:var(--panel);border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;color:var(--ink);}
+.nav-strip button.step:hover{background:var(--panel-2);}
 .nav-strip .cur{font-size:16px;font-weight:700;min-width:150px;}
 
 .cols3{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:18px;}
@@ -236,15 +333,15 @@ button.btn.danger:hover{background:#9C362E;}
 .audit-controls label{font-size:10.5px;color:var(--ink-soft);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
 /* width:auto obrigatório: a regra global select{width:100%} é pensada pros
    formulários de lançamento e já vazou pra selects soltos antes. */
-.audit-controls select, .audit-controls input[type=date]{width:auto;flex:0 0 auto;border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--ink);background:#fff;}
-.audit-control-field.grow input[type=search]{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:13px;font-family:var(--sans);background:#fff;color:var(--ink);}
+.audit-controls select, .audit-controls input[type=date]{width:auto;flex:0 0 auto;border:1px solid var(--line);border-radius:7px;padding:6px 10px;font-size:13px;color:var(--ink);background:var(--field-bg);}
+.audit-control-field.grow input[type=search]{width:100%;border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:13px;font-family:var(--sans);background:var(--field-bg);color:var(--ink);}
 
 .audit-tipos{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
 .audit-tipos #audit-count-info{margin-left:auto;}
 .fpill{all:unset;box-sizing:border-box;cursor:pointer;font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;
-  border:1px solid var(--line);background:#fff;color:var(--ink-soft);white-space:nowrap;}
-.fpill:hover{background:#F4F6F5;}
-.fpill.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  border:1px solid var(--line);background:var(--panel);color:var(--ink-soft);white-space:nowrap;}
+.fpill:hover{background:var(--panel-2);}
+.fpill.on{background:var(--ink);color:var(--bg);border-color:var(--ink);}
 
 .audit-table td{vertical-align:top;}
 .audit-hora{font-family:var(--mono);color:var(--ink-soft);font-size:12px;white-space:nowrap;}
@@ -262,24 +359,27 @@ tr.audit-daygroup:first-child td{padding-top:2px;}
 .diff-arrow{color:var(--ink-soft);}
 .diff-now{color:var(--brand);font-weight:600;}
 
-.tag-commit{font-size:9.5px;background:#F0F3F1;color:var(--ink-soft);border-radius:5px;padding:1px 5px;display:inline-block;margin-top:3px;}
+.tag-commit{font-size:9.5px;background:var(--panel-2);color:var(--ink-soft);border-radius:5px;padding:1px 5px;display:inline-block;margin-top:3px;}
 .tag-card{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle;}
 
 .backup-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
-.kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #F0F2F1;font-size:13.5px;gap:14px;}
+.kv{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;gap:14px;}
+/* A 320px o botão da Zona de risco (203px, nowrap) não cabia ao lado do texto
+   e vazava pra fora da tela. Em tela estreita a linha quebra. */
+@media(max-width:640px){ .kv{flex-wrap:wrap;} }
 .kv:last-child{border-bottom:none;}
 
 .switch{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;width:fit-content;}
 .switch input{position:absolute;opacity:0;width:1px;height:1px;}
-.switch-track{width:38px;height:22px;background:#DCE2DF;border-radius:20px;position:relative;transition:background .15s;flex-shrink:0;}
-.switch-thumb{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s;}
+.switch-track{width:38px;height:22px;background:var(--line);border-radius:20px;position:relative;transition:background .15s;flex-shrink:0;}
+.switch-thumb{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s;}
 .switch input:checked + .switch-track{background:var(--brand);}
 .switch input:checked + .switch-track .switch-thumb{transform:translateX(16px);}
 .switch input:focus-visible + .switch-track{outline:2px solid var(--brand);outline-offset:2px;}
 .switch-label{font-size:14px;font-weight:600;color:var(--ink);}
 
 .fatura-list{display:flex;flex-direction:column;container-type:inline-size;}
-.fatura-card{padding:14px 0;border-bottom:1px solid #F0F2F1;}
+.fatura-card{padding:14px 0;border-bottom:1px solid var(--line-soft);}
 .fatura-card:last-child{border-bottom:none;padding-bottom:0;}
 .fatura-card:first-child{padding-top:0;}
 .fatura-top{display:grid;grid-template-columns:1fr 88px 88px 96px 122px;column-gap:14px;align-items:center;}
@@ -321,7 +421,7 @@ tr.audit-daygroup:first-child td{padding-top:2px;}
 .debt-row:last-child{margin-bottom:0;}
 .debt-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;gap:10px;}
 
-::placeholder{color:#B7C0BC;}
+::placeholder{color:var(--ink-faint);}
 
 .mobile-tabbar{display:none;}
 
@@ -375,7 +475,7 @@ tr.audit-daygroup:first-child td{padding-top:2px;}
   .table-scroll thead{display:none;}
   .table-scroll tr{display:block;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;}
   .table-scroll tr:last-child{margin-bottom:0;}
-  .table-scroll td{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #F2F4F3;padding:7px 0;text-align:right;white-space:normal;}
+  .table-scroll td{display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line-soft);padding:7px 0;text-align:right;white-space:normal;}
   .table-scroll td:last-child{border-bottom:none;}
   .table-scroll td::before{content:attr(data-label);font-size:10px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft);font-weight:600;text-align:left;flex-shrink:0;}
   .table-scroll td:first-child{display:block;text-align:left;font-weight:600;padding-bottom:8px;}
@@ -387,6 +487,81 @@ tr.audit-daygroup:first-child td{padding-top:2px;}
 
 /* ================= Relatório em PDF (via impressão do navegador) ================= */
 .print-only{display:none;}
+
+/* ================= Tema escuro =================
+   Ativado por data-theme="dark" no <html> (escolha manual) ou pelo
+   prefers-color-scheme quando o usuário deixou em "Sistema". Só redefine
+   tokens — nenhuma regra de componente é duplicada aqui, e é por isso que
+   cor fixa em componente novo quebra o tema: sempre use um token.
+   Não é preto puro: o fundo guarda o mesmo veio esverdeado da marca, e os
+   painéis ficam ACIMA do fundo (mais claros), como no tema claro. */
+:root[data-theme="dark"]{
+  --bg: #0E1512;
+  --panel: #16211D;
+  --panel-2: #1E2B26;
+  --ink: #E7EEEA;
+  --ink-soft: #94A49D;
+  --ink-faint: #67786F;
+  --line: #2A3A33;
+  --line-soft: #223029;
+  --track: #22302A;
+  --field-bg: #111A17;
+  --sidebar: #0A0F0D;
+  --sidebar-ink: #C9D6CF;
+  /* Acentos clareados pra servirem de TEXTO sobre painel escuro. Os fundos
+     sólidos (--brand-solid/--bad-solid) continuam os mesmos do tema claro. */
+  --brand: #45C79B;
+  --brand-soft: #14342A;
+  --warn: #DCA451;
+  --warn-ink: #DCA451;
+  --warn-soft: #362916;
+  --bad: #E57F74;
+  --bad-soft: #3A1F1C;
+  --info: #8AA6F2;
+  --info-soft: #1B2642;
+  --purple: #B79BE8;
+  --purple-soft: #2A2140;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,.6);
+  --overlay: rgba(0,0,0,.62);
+}
+@media (prefers-color-scheme: dark){
+  :root[data-theme="auto"]{
+  --bg: #0E1512;
+  --panel: #16211D;
+  --panel-2: #1E2B26;
+  --ink: #E7EEEA;
+  --ink-soft: #94A49D;
+  --ink-faint: #67786F;
+  --line: #2A3A33;
+  --line-soft: #223029;
+  --track: #22302A;
+  --field-bg: #111A17;
+  --sidebar: #0A0F0D;
+  --sidebar-ink: #C9D6CF;
+  /* Acentos clareados pra servirem de TEXTO sobre painel escuro. Os fundos
+     sólidos (--brand-solid/--bad-solid) continuam os mesmos do tema claro. */
+  --brand: #45C79B;
+  --brand-soft: #14342A;
+  --warn: #DCA451;
+  --warn-ink: #DCA451;
+  --warn-soft: #362916;
+  --bad: #E57F74;
+  --bad-soft: #3A1F1C;
+  --info: #8AA6F2;
+  --info-soft: #1B2642;
+  --purple: #B79BE8;
+  --purple-soft: #2A2140;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-md: 0 6px 20px rgba(0,0,0,.45);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,.6);
+  --overlay: rgba(0,0,0,.62);
+}
+}
+
 @media print{
   /* display:none tira o app do fluxo. Com o visibility:hidden de antes ele
      continuava ocupando a altura toda (1.146px medidos) atrás do relatório e

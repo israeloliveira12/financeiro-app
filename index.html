@@ -12,6 +12,15 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
 <title>Controle Financeiro</title>
+<script>
+  /* Inline e antes do CSS de propósito: se o tema fosse aplicado depois, a
+     página pintaria clara e só então escureceria (flash branco a cada F5). */
+  (function(){
+    var t = 'auto';
+    try{ t = localStorage.getItem('financeiro_theme') || 'auto'; }catch(e){}
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
@@ -89,8 +98,8 @@
             <div id="top-despesas-panel"></div>
           </div>
           <div class="panel">
-            <h2>Progresso das parcelas</h2>
-            <p class="panel-hint">Quanto falta para quitar cada financiamento</p>
+            <h2>Parcelas em andamento</h2>
+            <p class="panel-hint">Ordenadas pelo que ainda falta pagar</p>
             <div id="debt-progress-panel"></div>
           </div>
         </div>
@@ -115,18 +124,24 @@
         </div>
       </div>
 
-      <div class="grid2-equal">
-        <div class="panel">
-          <h2>Receita x Despesas — 12 meses</h2>
-          <p class="panel-hint">Contínua = realizado · tracejada = previsão</p>
-          <div class="chart-legend"><span><span class="dot" style="background:var(--brand)"></span>Receita</span><span><span class="dot" style="background:var(--bad)"></span>Despesas</span></div>
-          <div class="chart-canvas-wrap" style="height:250px;"><canvas id="chart-forecast"></canvas></div>
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-head-t">
+            <h2 id="chart12-title">Receita x Despesas — 12 meses</h2>
+            <p class="panel-hint">Contínua = realizado · tracejada = previsão</p>
+          </div>
+          <div class="mode-toggle compact" id="chart12-toggle">
+            <button class="active" data-chart="fluxo" onclick="setChart12('fluxo')">Fluxo</button>
+            <button data-chart="saldo" onclick="setChart12('saldo')">Saldo acumulado</button>
+          </div>
         </div>
-        <div class="panel">
-          <h2>Tendência do saldo acumulado</h2>
-          <p class="panel-hint">Contínua = realizado · tracejada = previsão</p>
+        <div id="wrap-forecast">
+          <div class="chart-legend"><span><span class="dot" style="background:var(--brand)"></span>Receita</span><span><span class="dot" style="background:var(--bad)"></span>Despesas</span></div>
+          <div class="chart-canvas-wrap" style="height:240px;"><canvas id="chart-forecast"></canvas></div>
+        </div>
+        <div id="wrap-saldo" style="display:none;">
           <div class="chart-legend"><span><span class="dot" style="background:var(--brand)"></span>Saldo acumulado</span></div>
-          <div class="chart-canvas-wrap" style="height:250px;"><canvas id="chart-saldo"></canvas></div>
+          <div class="chart-canvas-wrap" style="height:240px;"><canvas id="chart-saldo"></canvas></div>
         </div>
       </div>
     </div>
@@ -137,7 +152,6 @@
         <h1 style="margin:0;">Mensal</h1>
         <button class="legend-info-btn" onclick="toggleLegendPopover()" title="O que significa cada status?">?</button>
       </div>
-      <p class="subtitle">Lance receitas e despesas do mês. Clique no status pra avançar, ou no lápis pra editar.</p>
       <div class="status-legend" id="status-legend-popover" style="display:none;">
         <span><span class="badge pendente">Pendente</span> orçado, ainda não aconteceu</span>
         <span><span class="badge lancado">Lançado</span> já gastou no cartão, fatura ainda não fechou</span>
@@ -152,8 +166,77 @@
         <button class="btn secondary" id="mes-today" style="margin-left:6px;">Mês atual</button>
       </div>
 
-      <div class="cards" id="mes-cards"></div>
+      <div class="stat-strip" id="mes-cards"></div>
 
+      <div class="mes-filterbar">
+        <div class="mode-toggle" id="mes-filtro-toggle">
+          <button class="active" data-filtro="aberto" onclick="setMesFiltro('aberto')">Em aberto</button>
+          <button data-filtro="todos" onclick="setMesFiltro('todos')">Todos</button>
+        </div>
+        <span class="small" id="mes-filtro-info"></span>
+      </div>
+
+      <div class="mode-toggle mes-section-toggle" id="mes-section-toggle">
+        <button class="active" data-section="receitas" onclick="setMesSection('receitas')">Receitas</button>
+        <button data-section="fixas" onclick="setMesSection('fixas')">Fixas</button>
+        <button data-section="variaveis" onclick="setMesSection('variaveis')">Variáveis</button>
+      </div>
+
+      <div class="cols3">
+        <div class="panel section-active" id="mes-panel-receitas">
+          <div class="section-title"><h2>Receitas</h2><span class="section-total" id="tot-income"></span></div>
+          <div class="table-scroll"><table class="entry-table-simple"><thead><tr><th>Descrição</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-income"></tbody></table></div>
+          <div class="resolved-row" id="resolved-income" style="display:none;"></div>
+          <button type="button" class="addbar" id="addbtn-income" onclick="toggleAddForm('income')" aria-expanded="false" aria-controls="addwrap-income">+ Adicionar receita</button>
+          <div class="add-wrap" id="addwrap-income" hidden>
+          <div class="entry-form">
+            <div><label for="inc-desc">Descrição</label><input type="text" id="inc-desc" placeholder="Ex: Freela"></div>
+            <div><label for="inc-amount">Valor</label><input type="number" step="0.01" id="inc-amount" placeholder="0,00"></div>
+            <div class="btn-wrap"><button class="btn" onclick="addIncome()">Adicionar</button></div>
+          </div>
+          <p class="small" style="margin-top:10px;">Dica: salário fixo todo mês? Cadastre em "Compromissos" como receita recorrente — ele aparece aqui sozinho todo mês.</p>
+          </div>
+        </div>
+
+        <div class="panel" id="mes-panel-fixas">
+          <div class="section-title"><h2>Despesas fixas</h2><span class="section-total" id="tot-fixed"></span></div>
+          <div class="table-scroll"><table class="entry-table"><thead><tr><th>Descrição</th><th>Método</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-fixed"></tbody></table></div>
+          <div class="resolved-row" id="resolved-fixed" style="display:none;"></div>
+          <button type="button" class="addbar" id="addbtn-fixed" onclick="toggleAddForm('fixed')" aria-expanded="false" aria-controls="addwrap-fixed">+ Adicionar despesa fixa</button>
+          <div class="add-wrap" id="addwrap-fixed" hidden>
+          <div class="entry-form">
+            <div><label for="fix-desc">Descrição</label><input type="text" id="fix-desc" placeholder="Ex: Internet"></div>
+            <div><label for="fix-amount">Valor</label><input type="number" step="0.01" id="fix-amount" placeholder="0,00"></div>
+            <div><label for="fix-method">Método</label><select id="fix-method" onchange="toggleCardSelect('fix')"></select></div>
+            <div id="fix-card-wrap" style="display:none;"><label for="fix-card">Cartão</label><select id="fix-card" class="card-select"></select></div>
+            <div class="btn-wrap"><button class="btn" onclick="addManual('fixed')">Adicionar</button></div>
+          </div>
+          </div>
+        </div>
+
+        <div class="panel" id="mes-panel-variaveis">
+          <div class="section-title"><h2>Despesas variáveis</h2><span class="section-total" id="tot-variable"></span></div>
+          <div class="table-scroll"><table class="entry-table"><thead><tr><th>Descrição</th><th>Método</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-variable"></tbody></table></div>
+          <div class="resolved-row" id="resolved-variable" style="display:none;"></div>
+          <button type="button" class="addbar" id="addbtn-variable" onclick="toggleAddForm('variable')" aria-expanded="false" aria-controls="addwrap-variable">+ Adicionar despesa variável</button>
+          <div class="add-wrap" id="addwrap-variable" hidden>
+          <div class="entry-form">
+            <div><label for="var-desc">Descrição</label><input type="text" id="var-desc" placeholder="Ex: Mercado"></div>
+            <div><label for="var-amount">Valor</label><input type="number" step="0.01" id="var-amount" placeholder="0,00"></div>
+            <div><label for="var-method">Método</label><select id="var-method" onchange="toggleCardSelect('var')"></select></div>
+            <div id="var-card-wrap" style="display:none;"><label for="var-card">Cartão</label><select id="var-card" class="card-select"></select></div>
+            <div class="btn-wrap"><button class="btn" onclick="addManual('variable')">Adicionar</button></div>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      <details class="mes-analise" id="mes-analise" ontoggle="saveAnaliseOpen(this.open)">
+        <summary>
+          <svg class="caret" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+          <span class="mes-analise-t">Análise do mês</span>
+          <span class="small">Faturas dos cartões · Gastos por forma de pagamento</span>
+        </summary>
       <div class="grid2-equal" id="mes-secondary-grid">
         <div class="panel" id="mes-faturas-wrap" style="display:none;">
           <h2>Faturas dos cartões</h2>
@@ -167,48 +250,7 @@
         </div>
       </div>
 
-      <div class="mode-toggle mes-section-toggle" id="mes-section-toggle">
-        <button class="active" data-section="receitas" onclick="setMesSection('receitas')">Receitas</button>
-        <button data-section="fixas" onclick="setMesSection('fixas')">Fixas</button>
-        <button data-section="variaveis" onclick="setMesSection('variaveis')">Variáveis</button>
-      </div>
-
-      <div class="cols3">
-        <div class="panel section-active" id="mes-panel-receitas">
-          <div class="section-title"><h2>Receitas</h2><span class="section-total" id="tot-income"></span></div>
-          <div class="table-scroll"><table class="entry-table-simple"><thead><tr><th>Descrição</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-income"></tbody></table></div>
-          <div class="entry-form">
-            <div><label for="inc-desc">Descrição</label><input type="text" id="inc-desc" placeholder="Ex: Freela"></div>
-            <div><label for="inc-amount">Valor</label><input type="number" step="0.01" id="inc-amount" placeholder="0,00"></div>
-            <div class="btn-wrap"><button class="btn" onclick="addIncome()">Adicionar</button></div>
-          </div>
-          <p class="small" style="margin-top:10px;">Dica: salário fixo todo mês? Cadastre em "Compromissos" como receita recorrente — ele aparece aqui sozinho todo mês.</p>
-        </div>
-
-        <div class="panel" id="mes-panel-fixas">
-          <div class="section-title"><h2>Despesas fixas</h2><span class="section-total" id="tot-fixed"></span></div>
-          <div class="table-scroll"><table class="entry-table"><thead><tr><th>Descrição</th><th>Método</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-fixed"></tbody></table></div>
-          <div class="entry-form">
-            <div><label for="fix-desc">Descrição</label><input type="text" id="fix-desc" placeholder="Ex: Internet"></div>
-            <div><label for="fix-amount">Valor</label><input type="number" step="0.01" id="fix-amount" placeholder="0,00"></div>
-            <div><label for="fix-method">Método</label><select id="fix-method" onchange="toggleCardSelect('fix')"></select></div>
-            <div id="fix-card-wrap" style="display:none;"><label for="fix-card">Cartão</label><select id="fix-card" class="card-select"></select></div>
-            <div class="btn-wrap"><button class="btn" onclick="addManual('fixed')">Adicionar</button></div>
-          </div>
-        </div>
-
-        <div class="panel" id="mes-panel-variaveis">
-          <div class="section-title"><h2>Despesas variáveis</h2><span class="section-total" id="tot-variable"></span></div>
-          <div class="table-scroll"><table class="entry-table"><thead><tr><th>Descrição</th><th>Método</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead><tbody id="tbl-variable"></tbody></table></div>
-          <div class="entry-form">
-            <div><label for="var-desc">Descrição</label><input type="text" id="var-desc" placeholder="Ex: Mercado"></div>
-            <div><label for="var-amount">Valor</label><input type="number" step="0.01" id="var-amount" placeholder="0,00"></div>
-            <div><label for="var-method">Método</label><select id="var-method" onchange="toggleCardSelect('var')"></select></div>
-            <div id="var-card-wrap" style="display:none;"><label for="var-card">Cartão</label><select id="var-card" class="card-select"></select></div>
-            <div class="btn-wrap"><button class="btn" onclick="addManual('variable')">Adicionar</button></div>
-          </div>
-        </div>
-      </div>
+      </details>
     </div>
 
     <!-- COMPROMISSOS -->
@@ -336,6 +378,16 @@
         <div class="kv"><span>Nome</span><strong id="auth-name-label"></strong></div>
         <div class="kv"><span>E-mail conectado</span><strong id="auth-email-label" style="font-family:var(--mono);"></strong></div>
         <div class="backup-row"><button class="btn secondary" onclick="handleSignOut()">Sair da conta</button></div>
+      </div>
+
+      <div class="panel">
+        <h2>Aparência</h2>
+        <p class="panel-hint">Vale só neste aparelho — não sincroniza com a sua conta.</p>
+        <div class="mode-toggle" id="theme-toggle" style="margin-bottom:0;">
+          <button data-theme-opt="light" onclick="setTheme('light')">Claro</button>
+          <button data-theme-opt="dark" onclick="setTheme('dark')">Escuro</button>
+          <button data-theme-opt="auto" onclick="setTheme('auto')">Sistema</button>
+        </div>
       </div>
 
       <div class="panel">

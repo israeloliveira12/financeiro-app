@@ -1,4 +1,46 @@
 /* ================= Mês a mês ================= */
+/* Filtro de status das três tabelas. Começa em 'aberto' porque é o estado útil
+   em quase toda visita — o que já foi resolvido não pede nada. Vive em memória,
+   como `mesSection`: trocar de mês mantém a escolha, recarregar volta ao padrão. */
+let mesFiltro = 'aberto';
+// "Resolvido" = quitado por inteiro. Parcial e Lançado continuam à vista de
+// propósito: ainda falta dinheiro neles.
+function entryDone(e, kind){ return e.status === (kind==='income' ? 'Recebido' : 'Pago'); }
+/* Os três formulários de inclusão ficavam abertos o tempo todo — 14 campos
+   permanentes numa tela que é feita pra ler e marcar status. Agora abrem no
+   lugar, ao clicar. O estado vive no próprio DOM (atributo hidden), então
+   sobrevive aos re-renders do renderMes sem precisar de variável. */
+const ADD_LABELS = { income:'receita', fixed:'despesa fixa', variable:'despesa variável' };
+function toggleAddForm(kind){
+  const wrap = document.getElementById('addwrap-'+kind);
+  const btn = document.getElementById('addbtn-'+kind);
+  if(!wrap || !btn) return;
+  const abrir = wrap.hidden;
+  wrap.hidden = !abrir;
+  btn.setAttribute('aria-expanded', String(abrir));
+  btn.textContent = (abrir ? '− Fechar' : '+ Adicionar ') + (abrir ? '' : ADD_LABELS[kind]);
+  btn.classList.toggle('open', abrir);
+  if(abrir){
+    const campo = wrap.querySelector('input');
+    if(campo) campo.focus();
+  }
+}
+// O bloco "Análise do mês" lembra se estava aberto — preferência do aparelho,
+// não dado da conta, então fica numa chave global e não em localKey().
+const ANALISE_KEY = 'financeiro_analise_open';
+function saveAnaliseOpen(open){ try{ localStorage.setItem(ANALISE_KEY, open ? '1' : '0'); }catch(e){} }
+function restoreAnaliseOpen(){
+  const el = document.getElementById('mes-analise');
+  if(!el) return;
+  let v = null;
+  try{ v = localStorage.getItem(ANALISE_KEY); }catch(e){}
+  el.open = v === '1';
+}
+function setMesFiltro(v){
+  mesFiltro = v;
+  document.querySelectorAll('#mes-filtro-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.filtro===v));
+  renderMes();
+}
 function renderMes(){
   document.getElementById('mes-label').textContent = monthLabel(currentMonth);
   const t = monthTotals(currentMonth);
@@ -10,21 +52,26 @@ function renderMes(){
   const cardDefs = [
     {label:'Receita', value:fmt.format(t.income), cls:'', delta: deltaHTML(t.income, prevT.income, true)},
     {label:'Despesas', value:fmt.format(t.expenses), cls:'', delta: deltaHTML(t.expenses, prevT.expenses, false)},
-    {label:'A pagar', value:fmt.format(payable), cls: payable>0?'neg':'', delta:''},
-    {label:'A receber', value:fmt.format(receivable), cls: receivable>0?'pos':'', delta:''},
-    {label:'Saldo do mês', value:fmt.format(t.balance), cls:t.balance>=0?'pos':'neg', delta: deltaHTML(t.balance, prevT.balance, true)},
+    {label:'A pagar', value:fmt.format(payable), cls: payable>0?'neg':'', delta:'', key:true},
+    {label:'A receber', value:fmt.format(receivable), cls: receivable>0?'pos':'', delta:'', key:true},
+    {label:'Saldo do mês', value:fmt.format(t.balance), cls:t.balance>=0?'pos':'neg', delta: deltaHTML(t.balance, prevT.balance, true), key:true},
     {label:'Saldo acumulado', value:fmt.format(acc), cls:acc>=0?'pos':'neg', delta:''},
   ];
-  document.getElementById('mes-cards').innerHTML = cardDefs.map(c=>`<div class="card"><div class="label">${c.label}</div><div class="value ${c.cls}">${c.value}</div>${c.delta}</div>`).join('');
+  // Faixa única no lugar de seis caixas iguais: os três números que pedem ação
+  // (A pagar / A receber / Saldo do mês) ganham destaque, o resto é contexto.
+  document.getElementById('mes-cards').innerHTML = cardDefs.map(c=>
+    `<div class="stat${c.key?' key':''}"><div class="label">${esc(c.label)}</div><div class="value ${esc(c.cls)}">${esc(c.value)}</div>${c.delta}</div>`
+  ).join('');
 
   document.getElementById('mes-faturas-wrap').style.display = state.cards.length ? 'block' : 'none';
   document.getElementById('mes-secondary-grid').style.gridTemplateColumns = state.cards.length ? '' : '1fr';
   if(state.cards.length) renderFaturasInto(mm, 'mes-faturas-panel', currentMonth);
   renderMethodBreakdown(mm, 'mes-method-panel');
 
-  renderEntryTable('tbl-income', mm.income, 'income');
-  renderEntryTable('tbl-fixed', mm.fixed, 'fixed');
-  renderEntryTable('tbl-variable', mm.variable, 'variable');
+  renderEntryTable('tbl-income', mm.income, 'income', 'resolved-income');
+  renderEntryTable('tbl-fixed', mm.fixed, 'fixed', 'resolved-fixed');
+  renderEntryTable('tbl-variable', mm.variable, 'variable', 'resolved-variable');
+  renderFiltroInfo(mm);
   document.getElementById('tot-income').textContent = fmt.format(sumEntries(mm.income));
   document.getElementById('tot-fixed').textContent = fmt.format(sumEntries(mm.fixed));
   document.getElementById('tot-variable').textContent = fmt.format(sumEntries(mm.variable));
@@ -40,13 +87,52 @@ function setMesSection(section){
   document.getElementById('mes-panel-variaveis').classList.toggle('section-active', section==='variaveis');
 }
 
-function renderEntryTable(tbodyId, list, kind){
+// Conta e soma o que o filtro esconderia, por categoria.
+function doneEntries(mm, kind){
+  const cat = kind==='income' ? mm.income : (kind==='fixed' ? mm.fixed : mm.variable);
+  return cat.filter(e=>entryDone(e, kind));
+}
+function renderFiltroInfo(mm){
+  const el = document.getElementById('mes-filtro-info');
+  if(!el) return;
+  const total = mm.income.length + mm.fixed.length + mm.variable.length;
+  const feitos = ['income','fixed','variable'].reduce((n,k)=>n + doneEntries(mm,k).length, 0);
+  // De propósito só a contagem aqui: somar receita recebida com despesa paga daria
+  // um valor sem significado. O dinheiro aparece por categoria, no rodapé de cada tabela.
+  if(mesFiltro!=='aberto'){
+    el.textContent = total ? `Mostrando os ${total} lançamentos do mês.` : '';
+  } else if(feitos){
+    el.textContent = `${total-feitos} em aberto · ${feitos} já resolvido${feitos>1?'s':''} oculto${feitos>1?'s':''}.`;
+  } else {
+    el.textContent = total ? `${total} em aberto · nada resolvido ainda.` : '';
+  }
+}
+function renderEntryTable(tbodyId, list, kind, resolvedId){
   const tbody = document.getElementById(tbodyId);
-  if(!list.length){
-    tbody.innerHTML = `<tr><td colspan="${kind==='income'?4:5}" class="empty">Nada lançado ainda.</td></tr>`;
+  const feitos = list.filter(e=>entryDone(e, kind));
+  const visiveis = mesFiltro==='aberto' ? list.filter(e=>!entryDone(e, kind)) : list;
+
+  /* O filtro tira a linha da tabela, nunca o dinheiro da tela — mesma regra do
+     bug das reticências nos cards (ver CLAUDE.md): número de verdade não some. */
+  const rod = document.getElementById(resolvedId);
+  if(rod){
+    if(mesFiltro==='aberto' && feitos.length){
+      const rotulo = kind==='income' ? 'recebido' : 'pago';
+      rod.innerHTML = `<span>${esc(feitos.length)} ${esc(rotulo)}${feitos.length>1?'s':''} · <span class="resolved-val">${esc(fmt.format(sumEntries(feitos)))}</span></span>`
+        + `<button type="button" class="linklike" onclick="setMesFiltro('todos')">mostrar</button>`;
+      rod.style.display = '';
+    } else {
+      rod.innerHTML = '';
+      rod.style.display = 'none';
+    }
+  }
+
+  if(!visiveis.length){
+    const msg = (mesFiltro==='aberto' && list.length) ? 'Tudo resolvido neste mês.' : 'Nada lançado ainda.';
+    tbody.innerHTML = `<tr><td colspan="${kind==='income'?4:5}" class="empty">${msg}</td></tr>`;
     return;
   }
-  tbody.innerHTML = list.map(e=>{
+  tbody.innerHTML = visiveis.map(e=>{
     const methodCell = kind==='income' ? '' : `<td class="small" data-label="Método">${methodDisplay(e)}</td>`;
     const progressNote = e.status==='Parcial' ? `<div class="progress-note">${fmt.format(e.paidAmount||0)} de ${fmt.format(e.amount)}</div>` : '';
     const linkedCommitment = e.commitmentId && state.commitments.some(c=>c.id===e.commitmentId);

@@ -1,4 +1,25 @@
 /* ================= Dashboard ================= */
+/* As cores dos gráficos vinham cravadas em hexadecimal, então no tema escuro
+   a grade e os rótulos sumiam no fundo. Agora saem dos mesmos tokens do CSS,
+   lidos na hora de desenhar — e applyTheme() recria os gráficos na troca. */
+function chartColors(){
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
+  return {
+    brand: v('--brand', '#0E7A5F'),
+    bad:   v('--bad', '#B8433A'),
+    warn:  v('--warn', '#B8792B'),
+    info:  v('--info', '#3A5BC7'),
+    ink:   v('--ink', '#1C2321'),
+    soft:  v('--ink-soft', '#5B6663'),
+    grid:  v('--line-soft', '#EEF2F0'),
+    // Chart.js precisa de uma cor com alfa pro preenchimento sob a linha, e
+    // color-mix resolve isso sem precisar converter hex pra rgba na mão.
+    brandFill: 'color-mix(in srgb, ' + v('--brand', '#0E7A5F') + ' 12%, transparent)',
+    track: v('--track', '#EEF2F0'),
+    panel: v('--panel', '#FFFFFF'),
+  };
+}
 function deltaHTML(curr, prev, goodWhenUp){
   curr = num(curr); prev = num(prev);
   if(Math.abs(prev) < 1){
@@ -45,26 +66,73 @@ function renderMethodBreakdown(mm, targetId){
     </div>`;
   }).join('');
 }
+/* O painel mostrava TODO parcelamento que já existiu — quitado de dois anos atrás
+   inclusive — então só crescia e empurrava os gráficos de baixo pra fora da tela.
+   Agora desenha só o que ainda consome dinheiro, com teto; quitados e não-iniciados
+   viram etiqueta no rodapé e só abrem sob demanda. */
+const DEBT_VISIVEIS = 5;
+let debtShowAll = false;
+function toggleDebtAll(){ debtShowAll = !debtShowAll; renderDebtProgress(); }
+// Situação de um parcelamento no mês corrente.
+function debtStatus(c){
+  const diff = monthDiff(c.start, todayKey());
+  if(diff < 0) return { fase:'futuro' };
+  const inst = c.startNum + diff;
+  // Estar NA última parcela não é estar quitado — ainda falta pagar essa.
+  // O cálculo antigo (cur >= total) dava "Quitado" com uma parcela em aberto.
+  if(inst > c.total) return { fase:'quitado' };
+  const restantes = c.total - inst + 1;
+  return {
+    fase:'andamento', inst, restantes,
+    valor: restantes * num(c.amount),
+    pct: Math.min(100, Math.max(0, ((inst-1)/c.total)*100)),
+    fim: addMonthsToKey(c.start, c.total - c.startNum),
+  };
+}
 function renderDebtProgress(){
   const el = document.getElementById('debt-progress-panel');
-  const installments = state.commitments.filter(c=>c.type==='installment');
-  if(!installments.length){ el.innerHTML = `<div class="empty">Nenhum parcelamento cadastrado.</div>`; return; }
-  el.innerHTML = installments.map(c=>{
-    const diff = monthDiff(c.start, todayKey());
-    if(diff < 0){
-      return `<div class="debt-row">
-        <div class="debt-head"><span>${esc(c.desc)}</span><span class="small">começa em ${esc(monthLabel(c.start))}</span></div>
-        <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:0%"></div></div>
-      </div>`;
-    }
-    const cur = Math.min(c.startNum+diff, c.total);
-    const pct = Math.min(100, (cur/c.total)*100);
-    const rightText = cur>=c.total ? 'Quitado ✓' : `${cur}/${c.total} · ${pct.toFixed(0)}%`;
-    return `<div class="debt-row">
-      <div class="debt-head"><span>${esc(c.desc)}</span><span class="small">${esc(rightText)}</span></div>
-      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${esc(pct)}%"></div></div>
+  const todos = state.commitments.filter(c=>c.type==='installment');
+  if(!todos.length){ el.innerHTML = `<div class="empty">Nenhum parcelamento cadastrado.</div>`; return; }
+
+  const andamento = [], quitados = [], futuros = [];
+  todos.forEach(c=>{
+    const st = debtStatus(c);
+    if(st.fase==='andamento') andamento.push({c, st});
+    else if(st.fase==='quitado') quitados.push({c, st});
+    else futuros.push({c, st});
+  });
+  andamento.sort((a,b)=>b.st.valor - a.st.valor);
+
+  const mostra = debtShowAll ? andamento : andamento.slice(0, DEBT_VISIVEIS);
+  const linha = ({c,st}) => `<div class="debt-row">
+      <div class="debt-head"><span>${esc(c.desc)}</span><span class="small">${esc(st.restantes)} restante${st.restantes>1?'s':''} · <strong>${esc(fmt.format(st.valor))}</strong></span></div>
+      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${esc(st.pct)}%"></div></div>
+      <div class="debt-sub">parcela ${esc(st.inst)}/${esc(c.total)} · termina em ${esc(monthShort(st.fim))}</div>
     </div>`;
-  }).join('');
+
+  let html = '';
+  if(andamento.length){
+    html += mostra.map(linha).join('');
+    const ocultas = andamento.length - mostra.length;
+    if(ocultas > 0){
+      html += `<button type="button" class="linklike debt-more" onclick="toggleDebtAll()">+${esc(ocultas)} em andamento</button>`;
+    } else if(debtShowAll && andamento.length > DEBT_VISIVEIS){
+      html += `<button type="button" class="linklike debt-more" onclick="toggleDebtAll()">mostrar menos</button>`;
+    }
+    const totalFalta = andamento.reduce((s,x)=>s+x.st.valor, 0);
+    html += `<div class="debt-total"><span>Total ainda a pagar</span><span class="debt-total-val">${esc(fmt.format(totalFalta))}</span></div>`;
+  } else {
+    html += `<div class="empty">Nenhuma parcela em andamento.</div>`;
+  }
+
+  // Quitados e não-iniciados continuam acessíveis, mas param de ocupar altura.
+  const chips = [];
+  if(quitados.length) chips.push(`<span class="chip-soft">${esc(quitados.length)} quitado${quitados.length>1?'s':''}</span>`);
+  futuros.forEach(({c}) => chips.push(`<span class="chip-soft">${esc(c.desc)} começa em ${esc(monthShort(c.start))}</span>`));
+  if(chips.length){
+    html += `<div class="debt-foot"><span class="debt-chips">${chips.join('')}</span></div>`;
+  }
+  el.innerHTML = html;
 }
 
 function renderDashboard(){
@@ -80,8 +148,7 @@ function renderDashboard(){
     {label:'Saldo acumulado', value: fmt.format(acc), cls: acc>=0?'pos':'neg', delta:''},
   ].map(c=>`<div class="card"><div class="label">${esc(c.label)}</div><div class="value ${esc(c.cls)}">${esc(c.value)}</div>${c.delta}</div>`).join('');
 
-  renderForecastChart();
-  renderSaldoTrendChart();
+  if(chart12Mode==='fluxo') renderForecastChart(); else renderSaldoTrendChart();
   renderTopDespesas(t.mm);
   renderDebtProgress();
   renderSaude(key,t);
@@ -114,13 +181,30 @@ function forecastWindow(){
 // Estiliza o eixo X pra destacar o mês de "hoje" (cor + negrito), já que o marcador
 // vertical tracejado do SVG antigo não existe mais sem o plugin de anotação.
 function todayTickOptions(todayIdx){
+  const C = chartColors();
   return {
-    color: (ctx)=> ctx.index===todayIdx ? '#0E7A5F' : '#5B6663',
+    color: (ctx)=> ctx.index===todayIdx ? C.brand : C.soft,
     font: (ctx)=> ({ size: 9.3, weight: ctx.index===todayIdx ? '700' : '400' }),
   };
 }
 function dashAfterToday(todayIdx){
   return (ctx)=> ctx.p0DataIndex >= todayIdx ? [5,4] : undefined;
+}
+/* Os dois gráficos de 12 meses são a mesma série vista de dois jeitos, e ocupavam
+   500px de altura lado a lado. Viraram um painel só com chave Fluxo/Saldo. Só o
+   visível é instanciado: num <canvas> com display:none o Chart.js mede 0x0 e
+   desenha errado quando reaparece. */
+let chart12Mode = 'fluxo';
+function setChart12(mode){
+  chart12Mode = mode;
+  document.querySelectorAll('#chart12-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.chart===mode));
+  const fluxo = mode==='fluxo';
+  document.getElementById('wrap-forecast').style.display = fluxo ? '' : 'none';
+  document.getElementById('wrap-saldo').style.display = fluxo ? 'none' : '';
+  document.getElementById('chart12-title').textContent = fluxo ? 'Receita x Despesas — 12 meses' : 'Tendência do saldo acumulado';
+  // Destrói o que saiu de cena em vez de deixar a instância viva atrás de display:none.
+  if(fluxo){ if(saldoChart){ saldoChart.destroy(); saldoChart = null; } renderForecastChart(); }
+  else { if(forecastChart){ forecastChart.destroy(); forecastChart = null; } renderSaldoTrendChart(); }
 }
 let forecastChart = null;
 function renderForecastChart(){
@@ -138,7 +222,8 @@ function renderForecastChart(){
       formatter: (v)=> fmtCompact(v),
     }
   });
-  const data = { labels, datasets: [ seriesFor('income','#0E7A5F','top'), seriesFor('expenses','#B8433A','bottom') ] };
+  const C = chartColors();
+  const data = { labels, datasets: [ seriesFor('income',C.brand,'top'), seriesFor('expenses',C.bad,'bottom') ] };
   const options = {
     responsive:true, maintainAspectRatio:false,
     interaction:{ mode:'index', intersect:false },
@@ -148,7 +233,7 @@ function renderForecastChart(){
     },
     scales:{
       x:{ grid:{display:false}, ticks: todayTickOptions(todayIdx) },
-      y:{ grid:{color:'#EEF2F0'}, ticks:{display:false}, border:{display:false} },
+      y:{ grid:{color:C.grid}, ticks:{display:false}, border:{display:false} },
     }
   };
   if(forecastChart) forecastChart.destroy();
@@ -162,15 +247,16 @@ function renderSaldoTrendChart(){
   let running = accumulatedUpTo(before);
   const series = pts.map(p=>{ running += (p.income - p.expenses); return { key:p.key, value:running }; });
   const labels = series.map(p=>monthShort(p.key));
+  const C = chartColors();
 
   const data = { labels, datasets: [{
     label:'Saldo acumulado',
     data: series.map(p=>p.value),
-    borderColor:'#0E7A5F', backgroundColor:'rgba(14,122,95,0.08)', pointBackgroundColor:'#0E7A5F',
+    borderColor:C.brand, backgroundColor:C.brandFill, pointBackgroundColor:C.brand,
     borderWidth:2.4, pointRadius:3, tension:0, fill:'origin',
     segment: { borderDash: dashAfterToday(todayIdx) },
     datalabels: {
-      color:'#0E7A5F',
+      color:C.brand,
       anchor: (ctx)=> ctx.dataset.data[ctx.dataIndex] >= 0 ? 'end' : 'start',
       align: (ctx)=> ctx.dataset.data[ctx.dataIndex] >= 0 ? 'top' : 'bottom',
       offset:4, font:{size:9,weight:'600'},
@@ -186,7 +272,7 @@ function renderSaldoTrendChart(){
     },
     scales:{
       x:{ grid:{display:false}, ticks: todayTickOptions(todayIdx) },
-      y:{ grid:{color:'#EEF2F0'}, ticks:{display:false}, border:{display:false} },
+      y:{ grid:{color:C.grid}, ticks:{display:false}, border:{display:false} },
     }
   };
   if(saldoChart) saldoChart.destroy();
@@ -224,22 +310,23 @@ function renderSaude(key,t){
   const sobra = disponivel - gastos;
   const estourou = sobra < 0;
 
+  const C = chartColors();
   const ratio = disponivel>0 ? fixedTotal/disponivel : null;
-  let label,color;
-  if(disponivel<=0){ label='Sem saldo disponível este mês'; color='var(--ink-soft)'; }
-  else if(estourou){ label='Estourou o disponível'; color='var(--bad)'; }
-  else if(ratio<0.5){ label='Confortável'; color='var(--brand)'; }
-  else if(ratio<0.75){ label='Atenção'; color='var(--warn)'; }
-  else { label='Apertado'; color='var(--bad)'; }
+  let label,color,soft;
+  if(disponivel<=0){ label='Sem saldo disponível este mês'; color='var(--ink-soft)'; soft='var(--panel-2)'; }
+  else if(estourou){ label='Estourou o disponível'; color='var(--bad)'; soft='var(--bad-soft)'; }
+  else if(ratio<0.5){ label='Confortável'; color='var(--brand)'; soft='var(--brand-soft)'; }
+  else if(ratio<0.75){ label='Atenção'; color='var(--warn)'; soft='var(--warn-soft)'; }
+  else { label='Apertado'; color='var(--bad)'; soft='var(--bad-soft)'; }
   const pct = ratio===null?0:Math.min(100,ratio*100);
   const taxaSobra = disponivel>0 ? sobra/disponivel : null;
 
   document.getElementById('saude-summary').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
-      <span class="health-badge" style="background:${disponivel<=0?'#EEF1F0':color};color:${disponivel<=0?'var(--ink-soft)':'#fff'}">${esc(label)}</span>
+      <span class="health-badge" style="background:${soft};color:${color}">${esc(label)}</span>
       <span class="small">${ratio!==null ? esc((ratio*100).toFixed(0))+'% do disponível preso em fixas' : ''}</span>
     </div>
-    <div class="tl-bar-wrap" style="height:10px;margin-bottom:12px;"><div class="tl-bar ${estourou?'over':''}" style="width:${esc(pct)}%;background:${disponivel<=0?'#ccc':color}"></div></div>
+    <div class="tl-bar-wrap" style="height:10px;margin-bottom:12px;"><div class="tl-bar ${estourou?'over':''}" style="width:${esc(pct)}%;background:${disponivel<=0?'var(--line)':color}"></div></div>
     <div class="small">${taxaSobra!==null
         ? `Disponível no mês: <strong style="font-family:var(--mono)">${esc(fmt.format(disponivel))}</strong> — acumulado anterior mais a receita deste mês.<br>Sobra: <strong style="color:${sobra>=0?'var(--brand)':'var(--bad)'}">${esc((taxaSobra*100).toFixed(0))}%</strong>${estourou?' — os gastos passaram o que você tem':''}.`
         : 'Lance a receita do mês para calcular a proporção.'}</div>
@@ -249,11 +336,11 @@ function renderSaude(key,t){
   // pela receita e o Chart.js pela soma das fatias — com gastos acima da receita
   // a legenda chegava a somar 120% enquanto o desenho mostrava outra proporção.
   const segments = estourou
-    ? [ {label:'Fixas', value:fixedTotal, color:'#3A5BC7'},
-        {label:'Variáveis', value:variableTotal, color:'#B8792B'} ]
-    : [ {label:'Fixas', value:fixedTotal, color:'#3A5BC7'},
-        {label:'Variáveis', value:variableTotal, color:'#B8792B'},
-        {label:'Sobra', value:sobra, color:'#0E7A5F'} ];
+    ? [ {label:'Fixas', value:fixedTotal, color:C.info},
+        {label:'Variáveis', value:variableTotal, color:C.warn} ]
+    : [ {label:'Fixas', value:fixedTotal, color:C.info},
+        {label:'Variáveis', value:variableTotal, color:C.warn},
+        {label:'Sobra', value:sobra, color:C.brand} ];
   const soma = segments.reduce((s,x)=>s+x.value,0);
 
   document.getElementById('saude-legend').innerHTML = segments.filter(s=>s.value>0).map(s=>`
@@ -404,7 +491,8 @@ function renderAnoChart(data){
       formatter: (v)=> fmtCompact(v),
     }
   });
-  const chartData = { labels, datasets:[ barSeries('income','#0E7A5F'), barSeries('expenses','#B8433A') ] };
+  const C = chartColors();
+  const chartData = { labels, datasets:[ barSeries('income',C.brand), barSeries('expenses',C.bad) ] };
   const options = {
     responsive:true, maintainAspectRatio:false,
     plugins:{
@@ -412,8 +500,8 @@ function renderAnoChart(data){
       tooltip:{ callbacks:{ label:(ctx)=> `${ctx.dataset.label}: ${fmt.format(ctx.parsed.y)}` } },
     },
     scales:{
-      x:{ grid:{display:false}, ticks:{color:'#5B6663', font:{size:9.5}} },
-      y:{ grid:{color:'#EEF2F0'}, ticks:{display:false}, border:{display:false} },
+      x:{ grid:{display:false}, ticks:{color:C.soft, font:{size:9.5}} },
+      y:{ grid:{color:C.grid}, ticks:{display:false}, border:{display:false} },
     }
   };
   if(anoChart) anoChart.destroy();

@@ -2,6 +2,53 @@
 // os labels no próprio dataset (ver dashboard.js), então não precisa de default global.
 Chart.register(ChartDataLabels);
 
+/* ================= Tema claro/escuro =================
+   Preferência do APARELHO, não da conta: fica numa chave global do localStorage,
+   não em localKey(), porque o mesmo login no PC e no celular pode querer temas
+   diferentes — e porque o tema precisa ser aplicado antes de existir sessão
+   (o <script> inline no <head> do index.html faz isso pra evitar flash branco). */
+const THEME_KEY = 'financeiro_theme';
+const THEME_COLORS = { light:'#0E7A5F', dark:'#0E1512' };
+function currentTheme(){
+  try{ return localStorage.getItem(THEME_KEY) || 'auto'; }catch(e){ return 'auto'; }
+}
+// 'auto' segue o sistema, então pra saber a cor da barra do navegador precisamos
+// resolver pro valor efetivo.
+function effectiveTheme(){
+  const t = currentTheme();
+  if(t !== 'auto') return t;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+// Barra do navegador/PWA acompanha o tema. Separado de applyTheme porque o boot
+// precisa dela sem disparar um re-render dos gráficos.
+function syncThemeColor(){
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', THEME_COLORS[effectiveTheme()]);
+}
+function applyTheme(){
+  document.documentElement.dataset.theme = currentTheme();
+  syncThemeColor();
+  renderThemeControls();
+  // Chart.js grava as cores na instância, então não basta trocar o CSS:
+  // os gráficos precisam ser recriados com a paleta nova.
+  if(state) renderDashboard();
+}
+function setTheme(v){
+  try{ localStorage.setItem(THEME_KEY, v); }catch(e){}
+  applyTheme();
+}
+function renderThemeControls(){
+  const atual = currentTheme();
+  document.querySelectorAll('#theme-toggle button').forEach(b=>b.classList.toggle('active', b.dataset.themeOpt===atual));
+}
+// Em "Sistema", acompanha o aparelho trocando de tema sem precisar recarregar.
+if(window.matchMedia){
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  const onChange = ()=>{ if(currentTheme()==='auto') applyTheme(); };
+  if(mq.addEventListener) mq.addEventListener('change', onChange);
+  else if(mq.addListener) mq.addListener(onChange);
+}
+
 /* ================= Navegação de abas ================= */
 // Cobre tanto os botões da sidebar (desktop) quanto a barra inferior (mobile) —
 // os dois conjuntos de botões ficam sincronizados, já que ambos existem no DOM
@@ -87,6 +134,7 @@ function renderAll(){
   renderCartoes();
   renderAuditoria();
   renderBackupInfo();
+  renderThemeControls();
   refreshCardSelects();
   const emailLbl = document.getElementById('auth-email-label');
   if(emailLbl && currentSession) emailLbl.textContent = currentSession.user.email;
@@ -99,6 +147,8 @@ function bootUI(){
   document.getElementById('cm-start-monthly').value = currentMonth;
   toggleCommitFields();
   onCommitCategoryChange();
+  syncThemeColor();
+  restoreAnaliseOpen();
   const lastView = localStorage.getItem(lastViewKey());
   if(lastView && lastView!=='dashboard' && document.getElementById('view-'+lastView)){
     switchView(lastView); // já chama renderAll()
