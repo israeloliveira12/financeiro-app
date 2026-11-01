@@ -214,7 +214,9 @@ function renderForecastChart(){
     label: field==='income' ? 'Receita' : 'Despesas',
     data: pts.map(p=>p[field]),
     borderColor: color, backgroundColor: color, pointBackgroundColor: color,
-    borderWidth: 2.2, pointRadius: 3, tension: 0,
+    // Linha suavizada a pedido do usuário; o mesmo vale pro gráfico de saldo,
+    // que divide o painel com este e ficaria inconsistente em bico.
+    borderWidth: 2.2, pointRadius: 3, tension: 0.35,
     segment: { borderDash: dashAfterToday(todayIdx) },
     datalabels: {
       display: (ctx)=> ctx.dataset.data[ctx.dataIndex] > 0,
@@ -253,7 +255,7 @@ function renderSaldoTrendChart(){
     label:'Saldo acumulado',
     data: series.map(p=>p.value),
     borderColor:C.brand, backgroundColor:C.brandFill, pointBackgroundColor:C.brand,
-    borderWidth:2.4, pointRadius:3, tension:0, fill:'origin',
+    borderWidth:2.4, pointRadius:3, tension:0.35, fill:'origin',
     segment: { borderDash: dashAfterToday(todayIdx) },
     datalabels: {
       color:C.brand,

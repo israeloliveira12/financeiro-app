@@ -10,7 +10,8 @@ Chart.register(ChartDataLabels);
 const THEME_KEY = 'financeiro_theme';
 const THEME_COLORS = { light:'#0E7A5F', dark:'#0E1512' };
 function currentTheme(){
-  try{ return localStorage.getItem(THEME_KEY) || 'auto'; }catch(e){ return 'auto'; }
+  // Padrão claro (pedido do usuário); 'auto' só se ele escolher "Sistema".
+  try{ return localStorage.getItem(THEME_KEY) || 'light'; }catch(e){ return 'light'; }
 }
 // 'auto' segue o sistema, então pra saber a cor da barra do navegador precisamos
 // resolver pro valor efetivo.

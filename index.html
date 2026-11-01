@@ -16,8 +16,10 @@
   /* Inline e antes do CSS de propósito: se o tema fosse aplicado depois, a
      página pintaria clara e só então escureceria (flash branco a cada F5). */
   (function(){
-    var t = 'auto';
-    try{ t = localStorage.getItem('financeiro_theme') || 'auto'; }catch(e){}
+    // Padrão CLARO, não 'auto': pedido do usuário. Quem escolheu antes tem a
+    // escolha lida aqui, então o tema sobrevive a fechar e reabrir o site.
+    var t = 'light';
+    try{ t = localStorage.getItem('financeiro_theme') || 'light'; }catch(e){}
     document.documentElement.dataset.theme = t;
   })();
 </script>
@@ -167,6 +169,27 @@
       </div>
 
       <div class="stat-strip" id="mes-cards"></div>
+      <details class="mes-analise" id="mes-analise" ontoggle="saveAnaliseOpen(this.open)">
+        <summary>
+          <svg class="caret" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+          <span class="mes-analise-t">Análise do mês</span>
+          <span class="small">Faturas dos cartões · Gastos por forma de pagamento</span>
+        </summary>
+      <div class="grid2-equal" id="mes-secondary-grid">
+        <div class="panel" id="mes-faturas-wrap" style="display:none;">
+          <h2>Faturas dos cartões</h2>
+          <p class="panel-hint">Lançado = já gasto · Pendente = ainda orçado</p>
+          <div id="mes-faturas-panel"></div>
+        </div>
+        <div class="panel">
+          <h2>Gastos por forma de pagamento</h2>
+          <p class="panel-hint">Despesas fixas + variáveis deste mês</p>
+          <div id="mes-method-panel"></div>
+        </div>
+      </div>
+
+      </details>
+
 
       <div class="mes-filterbar">
         <div class="mode-toggle" id="mes-filtro-toggle">
@@ -230,27 +253,6 @@
           </div>
         </div>
       </div>
-
-      <details class="mes-analise" id="mes-analise" ontoggle="saveAnaliseOpen(this.open)">
-        <summary>
-          <svg class="caret" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
-          <span class="mes-analise-t">Análise do mês</span>
-          <span class="small">Faturas dos cartões · Gastos por forma de pagamento</span>
-        </summary>
-      <div class="grid2-equal" id="mes-secondary-grid">
-        <div class="panel" id="mes-faturas-wrap" style="display:none;">
-          <h2>Faturas dos cartões</h2>
-          <p class="panel-hint">Lançado = já gasto · Pendente = ainda orçado</p>
-          <div id="mes-faturas-panel"></div>
-        </div>
-        <div class="panel">
-          <h2>Gastos por forma de pagamento</h2>
-          <p class="panel-hint">Despesas fixas + variáveis deste mês</p>
-          <div id="mes-method-panel"></div>
-        </div>
-      </div>
-
-      </details>
     </div>
 
     <!-- COMPROMISSOS -->

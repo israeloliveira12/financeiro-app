@@ -250,29 +250,24 @@ button.btn.danger:hover{background:var(--bad-hover);}
 .mes-section-toggle{display:none;}
 /* Barra de filtro do Mensal (Em aberto / Todos) e o rodapé "N pagos · R$ X" que
    cada tabela ganha quando o filtro esconde algo. */
-/* Faixa única de números do Mensal: um painel só dividido por linhas verticais,
-   no lugar de seis cards soltos de mesmo peso. */
-.stat-strip{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px;}
-.stat-strip .stat{flex:1 1 0;min-width:0;padding:12px 15px;border-left:1px solid var(--line);}
-.stat-strip .stat:first-child{border-left:0;}
-.stat-strip .stat.key{background:var(--panel-2);}
+/* Seis números do Mensal, em cards SEPARADOS. Chegaram a virar uma faixa única
+   colada, e o usuário recusou: no celular as bordas internas faziam os cards da
+   ponta parecerem diferentes dos do meio. Agora são caixas iguais com respiro
+   entre elas — a hierarquia dos três números de ação fica só no tamanho do
+   valor, sem fundo nem borda diferente, pra não perder o minimalismo. */
+.stat-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:20px;}
+.stat-strip .stat{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:13px 15px;}
 .stat-strip .label{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;overflow-wrap:break-word;}
-.stat-strip .value{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:4px;overflow-wrap:break-word;}
+.stat-strip .value{font-family:var(--mono);font-size:15px;font-weight:600;margin-top:5px;overflow-wrap:break-word;}
 .stat-strip .stat.key .value{font-size:18px;}
 .stat-strip .delta{font-size:10.5px;margin-top:3px;}
-/* Seis colunas numa linha só funcionam no desktop. Abaixo de 960px cada coluna
-   fica estreita demais e o valor quebra no meio do número ("R$ 10./510/,00"),
-   então a faixa passa a embrulhar: 3 por linha no tablet, 2 no celular. */
-@media(max-width:960px){
-  .stat-strip{flex-wrap:wrap;}
-  .stat-strip .stat{flex:1 1 33.333%;max-width:33.333%;border-top:1px solid var(--line);}
-  .stat-strip .stat:nth-child(-n+3){border-top:0;}
-  .stat-strip .stat:nth-child(3n+1){border-left:0;}
-}
+/* Seis colunas só cabem no desktop: mais estreito que isso o valor quebra no
+   meio do número ("R$ 10./510/,00"). 3 por linha no tablet, 2 no celular — e
+   todos os cards continuam idênticos entre si em qualquer largura. */
+@media(max-width:1180px){ .stat-strip{grid-template-columns:repeat(3,minmax(0,1fr));} }
 @media(max-width:640px){
-  .stat-strip .stat{flex:1 1 50%;max-width:50%;padding:10px 12px;border-left:1px solid var(--line);border-top:1px solid var(--line);}
-  .stat-strip .stat:nth-child(-n+2){border-top:0;}
-  .stat-strip .stat:nth-child(2n+1){border-left:0;}
+  .stat-strip{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .stat-strip .stat{padding:11px 13px;}
   .stat-strip .label{font-size:10px;}
   .stat-strip .value{font-size:14px;}
   .stat-strip .stat.key .value{font-size:16px;}
