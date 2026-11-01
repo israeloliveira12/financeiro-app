@@ -34,9 +34,18 @@ function deltaHTML(curr, prev, goodWhenUp){
   return `<div class="delta ${cls}">${arrow} ${up?'+':''}${pct.toFixed(0)}% vs. mês anterior</div>`;
 }
 
+/* Largura de barra sempre dentro de 0..100. Com estorno um percentual pode dar
+   negativo (crédito maior que o gasto do mês naquela fatia), e o `Math.max(pct,3)`
+   que existia pra garantir barra mínima transformava isso numa barrinha de 3%
+   sugerindo gasto onde não há. */
+function barPct(p, minimo){
+  if(!isFinite(p) || p <= 0) return 0;
+  return Math.min(100, Math.max(p, minimo || 0));
+}
 function renderTopDespesas(mm){
   const el = document.getElementById('top-despesas-panel');
-  const all = [...mm.fixed, ...mm.variable].slice().sort((a,b)=>b.amount-a.amount).slice(0,5);
+  // Estorno (valor negativo) não entra: a lista é das MAIORES despesas.
+  const all = [...mm.fixed, ...mm.variable].filter(e=>num(e.amount)>0).sort((a,b)=>b.amount-a.amount).slice(0,5);
   if(!all.length){ el.innerHTML = `<div class="empty">Nenhuma despesa lançada este mês.</div>`; return; }
   el.innerHTML = all.map((e,i)=>`
     <div class="kv">
@@ -62,7 +71,7 @@ function renderMethodBreakdown(mm, targetId){
     const pct = totalAll>0 ? (d.total/totalAll*100) : 0;
     return `<div class="debt-row">
       <div class="debt-head"><span>${esc(d.method)}</span><span class="small">${esc(fmt.format(d.total))} · ${esc(pct.toFixed(0))}%</span></div>
-      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${esc(Math.max(pct,3))}%"></div></div>
+      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar" style="width:${esc(barPct(pct,3))}%"></div></div>
     </div>`;
   }).join('');
 }
@@ -328,7 +337,7 @@ function renderSaude(key,t){
       <span class="health-badge" style="background:${soft};color:${color}">${esc(label)}</span>
       <span class="small">${ratio!==null ? esc((ratio*100).toFixed(0))+'% do disponível preso em fixas' : ''}</span>
     </div>
-    <div class="tl-bar-wrap" style="height:10px;margin-bottom:12px;"><div class="tl-bar ${estourou?'over':''}" style="width:${esc(pct)}%;background:${disponivel<=0?'var(--line)':color}"></div></div>
+    <div class="tl-bar-wrap" style="height:10px;margin-bottom:12px;"><div class="tl-bar ${estourou?'over':''}" style="width:${esc(barPct(pct))}%;background:${disponivel<=0?'var(--line)':color}"></div></div>
     <div class="small">${taxaSobra!==null
         ? `Disponível no mês: <strong style="font-family:var(--mono)">${esc(fmt.format(disponivel))}</strong> — acumulado anterior mais a receita deste mês.<br>Sobra: <strong style="color:${sobra>=0?'var(--brand)':'var(--bad)'}">${esc((taxaSobra*100).toFixed(0))}%</strong>${estourou?' — os gastos passaram o que você tem':''}.`
         : 'Lance a receita do mês para calcular a proporção.'}</div>
@@ -337,12 +346,16 @@ function renderSaude(key,t){
   // Legenda e rosca precisam usar o MESMO denominador. Antes a legenda dividia
   // pela receita e o Chart.js pela soma das fatias — com gastos acima da receita
   // a legenda chegava a somar 120% enquanto o desenho mostrava outra proporção.
+  // Uma fatia negativa (estornos acima dos gastos da categoria) não tem como
+  // ser desenhada; vira zero. O clamp é feito AQUI, no array único que alimenta
+  // tanto o dataset quanto a legenda, pra manter o invariante do denominador.
+  const fatia = (v)=> Math.max(0, v);
   const segments = estourou
-    ? [ {label:'Fixas', value:fixedTotal, color:C.info},
-        {label:'Variáveis', value:variableTotal, color:C.warn} ]
-    : [ {label:'Fixas', value:fixedTotal, color:C.info},
-        {label:'Variáveis', value:variableTotal, color:C.warn},
-        {label:'Sobra', value:sobra, color:C.brand} ];
+    ? [ {label:'Fixas', value:fatia(fixedTotal), color:C.info},
+        {label:'Variáveis', value:fatia(variableTotal), color:C.warn} ]
+    : [ {label:'Fixas', value:fatia(fixedTotal), color:C.info},
+        {label:'Variáveis', value:fatia(variableTotal), color:C.warn},
+        {label:'Sobra', value:fatia(sobra), color:C.brand} ];
   const soma = segments.reduce((s,x)=>s+x.value,0);
 
   document.getElementById('saude-legend').innerHTML = segments.filter(s=>s.value>0).map(s=>`
@@ -371,12 +384,15 @@ function renderFaturasInto(mm, targetId, monthKey){
           <span class="small">Limite do cartão</span>
           <span class="small"><strong>${esc(pct.toFixed(0))}% usado</strong> · ${disponivel>=0?esc(fmt.format(disponivel))+' livre':'estourado'}</span>
         </div>
-        <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${over?'over':''}" style="width:${esc(Math.max(pct,2))}%"></div></div>
+        <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${over?'over':''}" style="width:${esc(barPct(pct,2))}%"></div></div>
       </div>`;
     }
     // "Pago" só entra na grade quando existe algo pago — sem pagamento parcial o
     // card fica idêntico ao de sempre, com as três colunas de origem.
-    const temPago = inv.pago > 0;
+    // !== 0 e nao > 0: um estorno já processado deixa "pago" negativo, e com o
+  // teste antigo a coluna sumia — o total mostrava a diferença sem explicar de
+  // onde vinha. Sem nada pago a coluna continua fora, como antes.
+  const temPago = inv.pago !== 0;
     const colPago = temPago
       ? `<span class="fval pago"><span class="flabel">Pago</span>${esc(fmt.format(inv.pago))}</span>` : '';
     return `<div class="fatura-card">
@@ -418,7 +434,7 @@ function renderCardsSummary(){
     const overC = usedC > c.limit;
     return `<div class="debt-row">
       <div class="debt-head"><span><span class="tag-card" style="background:${escapeAttr(c.color||'#999')}"></span>${esc(c.name)}</span><span class="small">${esc(pctC.toFixed(0))}% usado</span></div>
-      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${overC?'over':''}" style="width:${esc(Math.max(pctC,2))}%"></div></div>
+      <div class="tl-bar-wrap" style="height:8px;"><div class="tl-bar ${overC?'over':''}" style="width:${esc(barPct(pctC,2))}%"></div></div>
     </div>`;
   }).join('');
   el.innerHTML = `
@@ -426,7 +442,7 @@ function renderCardsSummary(){
       <span class="small">${esc(withLimit.length)} ${withLimit.length>1?'cartões':'cartão'} com limite cadastrado</span>
       <span class="small"><strong>${esc(pct.toFixed(0))}% usado</strong> · ${disponivel>=0?esc(fmt.format(disponivel))+' livre':'estourado'}</span>
     </div>
-    <div class="tl-bar-wrap" style="height:10px;margin-bottom:10px;"><div class="tl-bar ${over?'over':''}" style="width:${esc(Math.max(pct,2))}%"></div></div>
+    <div class="tl-bar-wrap" style="height:10px;margin-bottom:10px;"><div class="tl-bar ${over?'over':''}" style="width:${esc(barPct(pct,2))}%"></div></div>
     <div class="small" style="margin-bottom:16px;">${esc(fmt.format(totalUsed))} usado de ${esc(fmt.format(totalLimit))} de limite total.${semLimite>0?` (${esc(semLimite)} ${semLimite>1?'cartões':'cartão'} sem limite cadastrado ${semLimite>1?'não entram':'não entra'} nessa conta.)`:''}</div>
     ${perCardHtml}
   `;

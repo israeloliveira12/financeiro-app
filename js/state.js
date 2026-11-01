@@ -68,6 +68,12 @@ function methodDisplay(e){
 // Valor precisa ser um número positivo. Um "-500" digitado por engano passava
 // direto e levava a despesa do mês pra negativo, sem nenhum sinal na tela.
 function validAmount(v){ const n = num(v); return isFinite(n) && n > 0; }
+/* Despesa PODE ser negativa: estorno do cartão, redução de anuidade, crédito
+   que a fatura lança com "-" na frente. Antes isso era barrado junto com o
+   "-500" digitado por engano, e não havia como lançar um abatimento. Zero
+   continua barrado (lançamento de valor zero não quer dizer nada), e receita
+   e compromisso seguem usando `validAmount` — só despesa aceita sinal. */
+function validSignedAmount(v){ const n = num(v); return isFinite(n) && n !== 0; }
 // Marca o campo em vermelho, foca nele e mostra o motivo — a validação antiga
 // só dava `return` e o botão parecia não funcionar.
 function fieldError(inputId, message){
@@ -125,7 +131,14 @@ function ensureMonth(key){
 
 /* ================= Cálculos ================= */
 function sumEntries(list){ return list.reduce((s,e)=>s+num(e.amount),0); }
-function remaining(e){ return Math.max(0, num(e.amount) - num(e.paidAmount||0)); }
+function remaining(e){
+  const total = num(e.amount), pago = num(e.paidAmount||0);
+  const falta = total - pago;
+  // O clamp existe pra pagamento a maior não virar sobra. Num estorno (valor
+  // negativo) o que falta também é negativo, então o clamp espelha o sinal —
+  // sem isso um crédito de -30 virava 0 e não abatia o "A pagar" nem a fatura.
+  return total < 0 ? Math.min(0, falta) : Math.max(0, falta);
+}
 function sumPayable(mm){ return [...mm.fixed, ...mm.variable].filter(e=>e.status!=='Pago').reduce((s,e)=>s+remaining(e),0); }
 function sumReceivable(mm){ return mm.income.filter(e=>e.status!=='Recebido').reduce((s,e)=>s+remaining(e),0); }
 // Três grandezas independentes; "total" e "previsto" são soma delas.

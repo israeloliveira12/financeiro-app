@@ -351,11 +351,11 @@ function openEntryEditModal(kind, id){
         <p class="modal-sub">${linkedCommitment ? 'Este lançamento vem de um compromisso fixo — as mudanças aqui valem só para ' + esc(monthLabel(currentMonth)) + '.' : esc(monthLabel(currentMonth))}</p>
         <div class="entry-form" style="margin-top:0;">
           <div><label for="em-desc">Descrição</label><input type="text" id="em-desc" value="${escapeAttr(e.desc)}"></div>
-          <div><label for="em-amount">Valor</label><input type="number" step="0.01" min="0.01" id="em-amount" value="${esc(e.amount)}"></div>
+          <div><label for="em-amount">Valor</label><input type="number" step="0.01" ${kind==='income'?'min="0.01"':''} id="em-amount" value="${esc(e.amount)}"></div>
         </div>
         ${methodSection}
         <div class="entry-form">
-          <div><label for="em-paid">${esc(paidLabel)}</label><input type="number" step="0.01" min="0" id="em-paid" value="${esc(e.paidAmount||0)}"></div>
+          <div><label for="em-paid">${esc(paidLabel)}</label><input type="number" step="0.01" ${num(e.amount)<0?'':'min="0"'} id="em-paid" value="${esc(e.paidAmount||0)}"></div>
           <div><label for="em-move-month">Mover para o mês</label><input type="month" id="em-move-month" value="${esc(currentMonth)}"></div>
         </div>
         ${ajusteSection}
@@ -376,7 +376,11 @@ function saveEntryEdit(kind, id){
   const e = mm[kind].find(x=>x.id===id);
   if(!e) return;
   const amountRaw = document.getElementById('em-amount').value;
-  if(!validAmount(amountRaw)) return fieldError('em-amount','O valor precisa ser maior que zero.');
+  const aceitaSinal = kind !== 'income';
+  if(!(aceitaSinal ? validSignedAmount(amountRaw) : validAmount(amountRaw)))
+    return fieldError('em-amount', aceitaSinal
+      ? 'Informe um valor diferente de zero. Use o sinal de menos para estorno ou desconto.'
+      : 'O valor precisa ser maior que zero.');
   const before = { desc:e.desc, amount:e.amount, method:e.method, cardId:e.cardId, paidAmount:e.paidAmount||0, status:e.status };
   e.desc = document.getElementById('em-desc').value.trim() || e.desc;
   e.amount = num(amountRaw);
@@ -387,9 +391,15 @@ function saveEntryEdit(kind, id){
   }
   const paidVal = num(document.getElementById('em-paid').value);
   const fullStatus = kind==='income' ? 'Recebido' : 'Pago';
-  if(paidVal<=0){
+  // Com estorno (valor negativo) a conta espelha: "quitado" é chegar no mesmo
+  // valor, e "parcial" é ficar entre zero e ele. Sem espelhar, um estorno de
+  // -30 com -30 quitado caía no ramo `paidVal<=0` e zerava o pagamento.
+  const negativo = num(e.amount) < 0;
+  const semPagamento = negativo ? paidVal >= 0 : paidVal <= 0;
+  const quitado = negativo ? paidVal <= e.amount : paidVal >= e.amount;
+  if(semPagamento){
     e.paidAmount = 0;
-  } else if(paidVal>=e.amount){
+  } else if(quitado){
     e.paidAmount = e.amount;
     e.status = fullStatus;
   } else {
@@ -499,7 +509,7 @@ function addManual(kind){
   const method = document.getElementById(p+'-method').value;
   const cardId = method==='Cartão de Crédito' ? document.getElementById(p+'-card').value : undefined;
   if(!desc) return fieldError(p+'-desc','Escreva uma descrição para a despesa.');
-  if(!validAmount(amountRaw)) return fieldError(p+'-amount','O valor precisa ser maior que zero.');
+  if(!validSignedAmount(amountRaw)) return fieldError(p+'-amount','Informe um valor diferente de zero. Use o sinal de menos para estorno ou desconto.');
   if(method==='Cartão de Crédito' && !cardId) return fieldError(p+'-card','Cadastre um cartão antes de lançar no crédito.');
   const mm = ensureMonth(currentMonth);
   mm[kind].push({id:uid(), desc, amount, method, cardId, status:'Pendente'});
