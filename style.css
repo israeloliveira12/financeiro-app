@@ -290,11 +290,6 @@ button.btn.danger:hover{background:var(--bad-hover);}
 .mes-analise[open] .caret{transform:rotate(90deg);}
 .mes-analise-t{font-size:15px;font-weight:600;}
 .mes-analise #mes-secondary-grid{margin:0;padding:0 20px 20px;}
-/* "Gastos por forma de pagamento" veio do Mensal pra Visão geral, onde o painel
-   ocupa a largura toda. Em duas colunas as barras não ficam esticadas de ponta a
-   ponta, o que exagerava a proporção de cada método. */
-.method-cols{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;}
-@media(max-width:640px){ .method-cols{grid-template-columns:1fr;} }
 .mes-analise .panel{margin-bottom:0;}
 
 .mes-filterbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;}

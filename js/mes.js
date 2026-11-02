@@ -63,12 +63,10 @@ function renderMes(){
     `<div class="stat${c.key?' key':''}"><div class="label">${esc(c.label)}</div><div class="value ${esc(c.cls)}">${esc(c.value)}</div>${c.delta}</div>`
   ).join('');
 
-  // As faturas usam a largura toda da "Análise do mês". Dividir o espaço com outro
-  // painel deixava o container em ~497px, abaixo do limiar de 520px da container
-  // query — ou seja, o card de fatura renderizava no modo celular (empilhado) até
-  // no desktop, e a seção inteira ficava 50% mais alta do que precisava.
   document.getElementById('mes-faturas-wrap').style.display = state.cards.length ? 'block' : 'none';
+  document.getElementById('mes-secondary-grid').style.gridTemplateColumns = state.cards.length ? '' : '1fr';
   if(state.cards.length) renderFaturasInto(mm, 'mes-faturas-panel', currentMonth);
+  renderMethodBreakdown(mm, 'mes-method-panel');
 
   renderEntryTable('tbl-income', mm.income, 'income', 'resolved-income');
   renderEntryTable('tbl-fixed', mm.fixed, 'fixed', 'resolved-fixed');
