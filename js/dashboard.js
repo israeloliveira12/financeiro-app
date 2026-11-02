@@ -159,6 +159,7 @@ function renderDashboard(){
 
   if(chart12Mode==='fluxo') renderForecastChart(); else renderSaldoTrendChart();
   renderTopDespesas(t.mm);
+  renderMethodBreakdown(t.mm, 'dash-method-panel'); // saiu do Mensal pra cá
   renderDebtProgress();
   renderSaude(key,t);
   renderCardsSummary();
