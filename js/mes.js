@@ -450,6 +450,10 @@ function cycleStatus(kind, id){
   e.status = ns;
   if(ns==='Pago' || ns==='Recebido') e.paidAmount = e.amount;
   if(ns==='Pendente') e.paidAmount = 0;
+  // Explica por que o clique "pulou" o Pago, em vez de parecer que travou.
+  if(num(e.amount) < 0 && (e.method==='Cartão de Crédito' || e.isCard) && ns==='Pendente' && oldStatus==='Lançado'){
+    showToast('Estorno não vai para "Pago": ele é quitado junto com a fatura, no botão "Pagar fatura".');
+  }
   logAudit('Status', `"${e.desc}" mudou de ${oldStatus} para ${ns} em ${monthLabel(currentMonth)}.`);
   save(); renderMes(); renderDashboard();
 }

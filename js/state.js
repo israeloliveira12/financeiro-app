@@ -139,7 +139,21 @@ function remaining(e){
   // sem isso um crédito de -30 virava 0 e não abatia o "A pagar" nem a fatura.
   return total < 0 ? Math.min(0, falta) : Math.max(0, falta);
 }
-function sumPayable(mm){ return [...mm.fixed, ...mm.variable].filter(e=>e.status!=='Pago').reduce((s,e)=>s+remaining(e),0); }
+/* Um crédito na fatura (estorno, desconto) abate o que você ainda vai
+   desembolsar, e **esse abatimento não se desfaz quando ele é quitado**. Antes o
+   filtro `status!=='Pago'` jogava o crédito fora assim que ele virava Pago, e
+   "A pagar" subia de volta enquanto os gastos que ele abate continuavam em
+   aberto — marcar o estorno como Pago inflava o número em 211,47 no caso real.
+   Agora o crédito conta em qualquer status, e o total tem piso zero. */
+function sumPayable(mm){
+  let aberto = 0, credito = 0;
+  [...mm.fixed, ...mm.variable].forEach(e=>{
+    const a = num(e.amount);
+    if(a < 0) credito += a;
+    else if(e.status !== 'Pago') aberto += remaining(e);
+  });
+  return Math.max(0, aberto + credito);
+}
 function sumReceivable(mm){ return mm.income.filter(e=>e.status!=='Recebido').reduce((s,e)=>s+remaining(e),0); }
 // Três grandezas independentes; "total" e "previsto" são soma delas.
 //   pago     = o que já foi quitado (Pago inteiro + a parte paga dos Parciais)
@@ -153,13 +167,30 @@ function sumReceivable(mm){ return mm.income.filter(e=>e.status!=='Recebido').re
 // que sempre contou o restante do Parcial como limite usado (ver cardLimitUsage).
 function cardInvoiceTotals(mm, cardId){
   const entries = [...mm.fixed, ...mm.variable].filter(e=>(e.method==='Cartão de Crédito'||e.isCard) && e.cardId===cardId);
-  let pago = 0, lancado = 0, pendente = 0;
+  let pago = 0, lancado = 0, pendente = 0, credito = 0;
   entries.forEach(e=>{
-    if(e.status==='Pago') pago += num(e.amount);
+    const a = num(e.amount);
+    /* Crédito (estorno/desconto) não é "uma despesa negativa paga": ele ABATE as
+       outras linhas da mesma fatura. Somado direto em `pago`, mudar o estorno de
+       Lançado para Pago fazia a coluna "Lançado" saltar 211,47 — o valor saía do
+       abatimento sem que nada tivesse sido quitado. Pendente continua abatendo o
+       orçamento, que é onde ele estava antes. */
+    if(a < 0){
+      if(e.status==='Pendente') pendente += a;
+      else credito += a;
+      return;
+    }
+    if(e.status==='Pago') pago += a;
     else if(e.status==='Parcial'){ pago += num(e.paidAmount||0); lancado += remaining(e); }
-    else if(e.status==='Lançado') lancado += num(e.amount);
+    else if(e.status==='Lançado') lancado += a;
     else pendente += remaining(e); // Pendente
   });
+  // Abate primeiro o que ainda está em aberto; só o que sobrar encosta no já pago.
+  // Assim o número não depende de em qual status o crédito está, e quando a fatura
+  // inteira é paga o crédito acaba em `pago`, que é o desembolso real.
+  const noLancado = Math.max(-lancado, credito);
+  lancado += noLancado;
+  pago += credito - noLancado;
   return { pago, lancado, pendente, total: pago+lancado, previsto: pago+lancado+pendente };
 }
 function cardLimitUsage(cardId){
@@ -278,7 +309,17 @@ function nextStatus(entry, kind){
     return entry.status==='Recebido' ? 'Pendente' : 'Recebido';
   }
   if(entry.status==='Parcial') return 'Pago';
-  if(entry.method==='Cartão de Crédito' || entry.isCard){
+  const ehCartao = entry.method==='Cartão de Crédito' || entry.isCard;
+  /* Crédito de cartão não tem "Pago": você não paga um estorno. Ele é quitado
+     junto com a fatura, pelo botão "Pagar fatura" — nunca sozinho. Marcar só ele
+     como Pago somava o crédito ao caixa como se tivesse entrado dinheiro na
+     conta, o que não acontece: estorno abate fatura, não credita conta.
+     O ciclo do clique passa a ser Pendente <-> Lançado; `payInvoice` continua
+     podendo marcar Pago, que é o caminho correto. */
+  if(ehCartao && num(entry.amount) < 0){
+    return entry.status==='Lançado' ? 'Pendente' : 'Lançado';
+  }
+  if(ehCartao){
     if(entry.status==='Pendente') return 'Lançado';
     if(entry.status==='Lançado') return 'Pago';
     return 'Pendente';
