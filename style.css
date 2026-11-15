@@ -248,6 +248,26 @@ button.btn.danger:hover{background:var(--bad-hover);}
 .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
 .panel-head-t{min-width:0;}
 .mes-section-toggle{display:none;}
+/* Conferência de caixa (Visão geral): uma linha só, discreta quando bate. */
+.conf-caixa{padding:14px 18px;}
+.cc-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.cc-campo{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+.cc-campo label{margin:0;white-space:nowrap;}
+.cc-campo input{width:130px;font-family:var(--mono);}
+.cc-vs{display:flex;flex-direction:column;flex-shrink:0;}
+.cc-lab{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;}
+.cc-val{font-family:var(--mono);font-size:14px;font-weight:600;}
+.cc-res{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 220px;}
+.cc-ok{color:var(--brand);font-weight:600;font-size:13px;}
+.cc-erro{color:var(--bad);font-weight:600;font-size:13px;}
+.cc-neutro{color:var(--ink-soft);font-size:12.5px;}
+.cc-dica{font-size:11.5px;color:var(--ink-soft);line-height:1.4;}
+@media(max-width:640px){
+  .cc-top{gap:12px;}
+  .cc-campo{width:100%;justify-content:space-between;}
+  .cc-campo input{width:150px;}
+  .cc-vs{flex-direction:row;align-items:baseline;gap:8px;width:100%;justify-content:space-between;}
+}
 /* Barra de filtro do Mensal (Em aberto / Todos) e o rodapé "N pagos · R$ X" que
    cada tabela ganha quando o filtro esconde algo. */
 /* Seis números do Mensal, em cards SEPARADOS. Chegaram a virar uma faixa única

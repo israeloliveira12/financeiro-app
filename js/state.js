@@ -235,6 +235,36 @@ function accumulatedUpTo(key){
   }
   return acc;
 }
+/* Quanto o sistema PRESSUPÕE que já passou pela conta corrente: saldo inicial
+   mais tudo que está marcado como Recebido/Pago (Parcial conta só a parte
+   quitada). Esse é o único número do app que pode ser conferido direto contra o
+   extrato do banco, e ele estava invisível.
+
+   Por que importa: vale a identidade
+       saldo acumulado = caixaEsperado + a receber − a pagar
+   Ou seja, quando a conta "saldo em conta + a receber − a pagar" não bate com o
+   saldo acumulado, **a diferença está sempre aqui** — em algo marcado como
+   quitado que não aconteceu, ou numa saída real que nunca foi lançada. Nunca é
+   erro de cálculo do app. Em novembro/2026 isso custou horas de procura manual
+   e um lançamento "Temp" criado pra forçar o fechamento. */
+function caixaEsperado(){
+  let v = num(state.meta.startingBalance);
+  const hoje = todayKey();
+  Object.keys(state.months).forEach(k=>{
+    if(monthDiff(k, hoje) < 0) return;   // mês futuro não passou pela conta ainda
+    const mm = state.months[k];
+    mm.income.forEach(e=>{
+      if(e.status==='Recebido') v += num(e.amount);
+      else if(e.status==='Parcial') v += num(e.paidAmount||0);
+    });
+    [...mm.fixed, ...mm.variable].forEach(e=>{
+      if(e.status==='Pago') v -= num(e.amount);
+      else if(e.status==='Parcial') v -= num(e.paidAmount||0);
+    });
+  });
+  return v;
+}
+
 // Base de todos os cálculos proporcionais do mês, conforme definido pelo usuário:
 // o que sobrou dos meses anteriores + a receita deste mês.
 function disponivelDoMes(key, income){

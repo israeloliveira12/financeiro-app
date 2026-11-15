@@ -42,6 +42,60 @@ function barPct(p, minimo){
   if(!isFinite(p) || p <= 0) return 0;
   return Math.min(100, Math.max(p, minimo || 0));
 }
+/* Conferência de caixa: compara o que o sistema pressupõe que passou pela conta
+   com o saldo que o usuário lê no banco. Era uma conta que ele fazia na mão toda
+   semana na calculadora; o app tinha todos os dados e não mostrava. */
+function setSaldoReal(v){
+  const n = num(v);
+  const tinha = state.meta.saldoReal;
+  if(v === '' || v === null){ delete state.meta.saldoReal; delete state.meta.saldoRealTs; }
+  else { state.meta.saldoReal = n; state.meta.saldoRealTs = Date.now(); }
+  // Só registra quando o valor muda de verdade: conferir toda semana não pode
+  // encher o log de auditoria.
+  if(num(tinha) !== n) logAudit('Edição', `Conferência de caixa: saldo real da conta informado como ${fmt.format(n)}.`);
+  save(); renderDashboard();
+}
+function renderCashCheck(){
+  const el = document.getElementById('conf-caixa');
+  if(!el) return;
+  const esperado = caixaEsperado();
+  const temReal = state.meta.saldoReal !== undefined && state.meta.saldoReal !== null;
+  const real = num(state.meta.saldoReal);
+  const dif = real - esperado;              // >0: sobrou no banco | <0: faltou
+  const bate = temReal && Math.abs(dif) < 0.005;
+
+  let veredito;
+  if(!temReal){
+    veredito = `<span class="cc-neutro">Informe o saldo da sua conta para conferir.</span>`;
+  } else if(bate){
+    veredito = `<span class="cc-ok">✓ Bate certinho</span>`;
+  } else {
+    // Dizer a DIREÇÃO do erro é o que torna isso útil: ou falta lançar uma saída,
+    // ou algo está marcado como quitado sem ter acontecido.
+    const falta = dif < 0;
+    veredito = `<span class="cc-erro">⚠ Diferença de ${esc(fmt.format(Math.abs(dif)))}</span>`
+      + `<span class="cc-dica">${falta
+          ? 'O sistema acha que você tem mais do que o banco mostra: há uma saída real não lançada, ou algo marcado como Pago/Recebido que não aconteceu.'
+          : 'O banco mostra mais do que o sistema: há uma entrada não lançada, ou algo ainda não marcado como Recebido.'}</span>`;
+  }
+  const quando = state.meta.saldoRealTs
+    ? `<span class="small">conferido em ${esc(new Date(state.meta.saldoRealTs).toLocaleDateString('pt-BR'))}</span>` : '';
+
+  el.innerHTML = `
+    <div class="cc-top">
+      <div class="cc-campo">
+        <label for="cc-saldo">Saldo na conta</label>
+        <input type="number" step="0.01" id="cc-saldo" value="${temReal?esc(real):''}" placeholder="0,00"
+               onchange="setSaldoReal(this.value)">
+      </div>
+      <div class="cc-vs">
+        <span class="cc-lab">O sistema pressupõe</span>
+        <span class="cc-val">${esc(fmt.format(esperado))}</span>
+      </div>
+      <div class="cc-res">${veredito}</div>
+      ${quando}
+    </div>`;
+}
 function renderTopDespesas(mm){
   const el = document.getElementById('top-despesas-panel');
   // Estorno (valor negativo) não entra: a lista é das MAIORES despesas.
@@ -158,6 +212,7 @@ function renderDashboard(){
   ].map(c=>`<div class="card"><div class="label">${esc(c.label)}</div><div class="value ${esc(c.cls)}">${esc(c.value)}</div>${c.delta}</div>`).join('');
 
   if(chart12Mode==='fluxo') renderForecastChart(); else renderSaldoTrendChart();
+  renderCashCheck();
   renderTopDespesas(t.mm);
   renderDebtProgress();
   renderSaude(key,t);
