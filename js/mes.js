@@ -446,6 +446,10 @@ function cycleStatus(kind, id){
   const e = mm[kind].find(x=>x.id===id);
   if(!e) return;
   const ns = nextStatus(e,kind);
+  if(ns==='Pago' && pagamentoPassariaDaFatura(e, currentMonth)){
+    showToast('Essa fatura já está coberta por um estorno. Marcar esta linha sozinha diria que você pagou mais do que a fatura deve — use "Pagar fatura" para quitar tudo de uma vez.', 'error');
+    return;
+  }
   const oldStatus = e.status;
   e.status = ns;
   if(ns==='Pago' || ns==='Recebido') e.paidAmount = e.amount;

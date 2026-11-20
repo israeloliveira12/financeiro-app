@@ -228,6 +228,28 @@ function cardLimitUsage(cardId){
   });
   return used;
 }
+/* Marcar UMA linha como "Pago" numa fatura que tem estorno pode afirmar um
+   pagamento maior do que a fatura inteira deve — e aí o limite preso cai pra zero
+   e o app passa a mostrar crédito que o banco não devolveu. Caso real
+   (novembro/2026): o iPhone 17 Pro cancelado deixou 11 parcelas de R$ 634,59 em
+   novembro, anuladas por um crédito de R$ 7.615,18. A fatura devia R$ 429,63, mas
+   marcar UMA parcela dizia ao sistema que R$ 634,59 tinham sido pagos.
+   Essas parcelas não foram pagas: foram canceladas. Quem quita uma fatura assim é
+   o botão "Pagar fatura", que move tudo de uma vez — e aí a conta fecha certo. */
+function pagamentoPassariaDaFatura(entry, monthKey){
+  if(!((entry.method==='Cartão de Crédito' || entry.isCard) && entry.cardId)) return false;
+  if(num(entry.amount) <= 0) return false;
+  const mm = state.months[monthKey];
+  if(!mm) return false;
+  let abertos = 0, credito = 0;
+  [...mm.fixed, ...mm.variable].forEach(x=>{
+    if(!((x.method==='Cartão de Crédito'||x.isCard) && x.cardId===entry.cardId)) return;
+    const a = num(x.amount);
+    if(a < 0){ if(x.status !== 'Pendente') credito += -a; }
+    else if(x.id !== entry.id && (x.status==='Lançado' || x.status==='Parcial')) abertos += remaining(x);
+  });
+  return credito > 0 && (abertos - credito) < -0.005;
+}
 function monthTotals(key){
   const mm = ensureMonth(key);
   const income = sumEntries(mm.income);
