@@ -172,6 +172,20 @@ td.num{font-family:var(--mono);text-align:right;white-space:nowrap;}
 .modal-box.has-ba .ba-preview,
 .modal-box.has-ba .ba-list{flex:1 1 auto;min-height:0;}
 .modal-box.has-ba .ba-list{max-height:none;min-height:76px;}
+/* Mesma cadeia do has-ba, para o modal de estorno: so a lista de parcelas encolhe,
+   entao os campos e os botoes Cancelar/Aplicar ficam sempre visiveis e existe uma
+   barra de rolagem so. Precisa descer por .est-section e .est-preview tambem, senao
+   a cadeia de encolhimento para nelas. */
+.modal-box.has-est{display:flex;flex-direction:column;max-height:90dvh;overflow-y:auto;}
+.modal-box.has-est > *,
+.modal-box.has-est .est-section > *,
+.modal-box.has-est .est-preview > *{flex-shrink:0;}
+.modal-box.has-est .est-section,
+.modal-box.has-est .est-preview{display:flex;flex-direction:column;}
+.modal-box.has-est .est-section,
+.modal-box.has-est .est-preview,
+.modal-box.has-est .est-list{flex:1 1 auto;min-height:0;}
+.modal-box.has-est .est-list{max-height:none;min-height:76px;}
 .ba-preview{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;}
 .ba-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 8px;}
 .ba-hint{font-size:11.5px;color:var(--ink-soft);margin:0;}
@@ -248,6 +262,19 @@ button.btn.danger:hover{background:var(--bad-hover);}
 .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;}
 .panel-head-t{min-width:0;}
 .mes-section-toggle{display:none;}
+/* Prévia do estorno de parcelamento (modal de compromisso). */
+.est-preview{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;}
+.est-hint{font-size:11.5px;color:var(--ink-soft);margin:0 0 8px;line-height:1.45;}
+.est-hint strong{color:var(--ink);}
+.est-dif{color:var(--warn-ink);}
+.est-list{max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;}
+.est-sub{font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft);margin-top:6px;}
+.est-sub:first-child{margin-top:0;}
+.est-row{display:flex;align-items:baseline;gap:10px;font-size:12px;}
+.est-mes{color:var(--ink-soft);flex:0 0 96px;}
+.est-val{min-width:0;overflow-wrap:break-word;}
+.est-row.est-cred .est-val strong{color:var(--brand);font-family:var(--mono);}
+.est-alerta{background:var(--warn-soft);color:var(--warn-ink);border-radius:8px;padding:9px 11px;font-size:11.5px;line-height:1.45;margin:0 0 10px;}
 /* Conferência de caixa (Visão geral): uma linha só, discreta quando bate. */
 .conf-caixa{padding:14px 18px;}
 .cc-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
@@ -484,6 +511,7 @@ tr.audit-daygroup:first-child td{padding-top:2px;}
   .modal-overlay{padding:16px;}
   .modal-box{padding:18px 16px;max-height:90dvh;overflow-y:auto;}
   .modal-box.has-ba{max-height:calc(100dvh - 32px);}
+  .modal-box.has-est{max-height:calc(100dvh - 32px);}
 
   /* Tabelas viram "cartões" empilhados, sem rolagem horizontal forçada */
   .table-scroll table{width:100%;}

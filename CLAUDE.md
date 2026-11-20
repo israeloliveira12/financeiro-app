@@ -219,6 +219,24 @@ Um iPhone parcelado em 12x no Itaú foi cancelado e o episódio gerou duas diver
 - **O "mês" do sistema é o ciclo da fatura, não o mês-calendário** (a fatura que vence em 06/dez cobre ~30/out a 29/nov). O usuário já lança assim e está correto — não "consertar" isso.
 - Conferência que vale a pena repetir numa dúvida: o **"Lançado"** de cada mês no painel de faturas deve bater com a projeção daquela fatura no app do banco. Em novembro/2026, dez/jan/fev bateram na casa dos centavos depois da correção.
 
+### A função de estorno (novembro/2026)
+
+Depois do segundo cancelamento em dois meses (um iPhone 17 Pro de R$ 7.615,18 em 12x no Picpay), o ajuste manual deixou de ser aceitável: são 11 lançamentos movidos a mão, em 11 meses, mais o crédito — e **o erro do iPhone 14 nasceu exatamente desse processo**. Agora existe `openEstornoModal(id)` em `js/compromissos.js`, aberta por um botão na seção "Cancelar compra / estorno" do modal de gerenciar compromisso. Aparece **só** quando `c.type==='installment'` e o método é Cartão de Crédito — é o cartão que antecipa parcela e lança crédito em fatura.
+
+- **Dois modos, porque cada banco faz diferente** (pedido explícito do usuário):
+  - **`antecipar`** — "Antecipou tudo e creditou de uma vez": tira cada parcela em aberto do mês dela, recria todas no mês do crédito e lança **um** crédito negativo. É o que o Picpay fez. Os campos "Fatura do crédito" e "Valor creditado" só aparecem neste modo.
+  - **`uma-a-uma`** — "Credita parcela a parcela": a parcela fica onde está e ganha um crédito do mesmo valor **no mês dela**, deixando cada fatura líquida em zero.
+- **A prévia e o "Aplicar" compartilham `planEstorno(id)`**, mesmo contrato do `planBulkAdjust` do reajuste em lote: a prévia não pode mentir sobre o que vai acontecer. **Se mudar uma regra do estorno, mude dentro de `planEstorno`.**
+- **`parcelasParaEstornar()` nunca chama `ensureMonth`** — percorre só `Object.keys(state.months)`, igual `sameNameEntries`. Casa por `commitmentId` **ou** por descrição no padrão `<desc> N/M`, pra pegar também parcela que já perdeu o vínculo. **Parcela já `Pago` não é tocada**: histórico fechado não muda, e é o banco que não mexe em fatura passada.
+- **A ordem dentro de `aplicarEstorno` importa e é contraintuitiva**: `p.c.endMonth` é setado **antes** de mexer em qualquer lançamento. Qualquer `ensureMonth` depois disso recriaria a parcela que acabou de ser removida, porque o compromisso ainda estaria ativo — isso **duplicou a parcela de dezembro num teste real** antes de a ordem ser corrigida.
+- **A parcela movida perde o `commitmentId` de propósito** (`delete copia.commitmentId`): deixou de ser parcela futura gerada e virou linha de uma fatura específica. Mantendo o vínculo, `ensureMonth` enxergaria várias parcelas do mesmo compromisso no mesmo mês.
+- **O crédito entra como `Lançado`, nunca `Pendente`** — Pendente não libera limite (regra de `cardLimitUsage`), e foi exatamente um estorno esquecido em Pendente que custou horas no caso do iPhone 14.
+- **O valor do crédito começa na soma das parcelas em aberto, mas é editável**: o banco costuma devolver também o que já foi pago. Quando o crédito difere da soma das movidas, a prévia diz o quanto e explica que é normal.
+- **Desfazer de 7s como todo lote do app**: snapshot dos meses tocados + do `endMonth` anterior. Mês que **ainda não existia** entra no snapshot como `null`, e o desfazer o **apaga** em vez de deixar um mês materializado do nada.
+- **Aplicar duas vezes empilha créditos** — não é bloqueado (um segundo estorno legítimo existe), mas `estornosExistentes()` põe um aviso em destaque na prévia, porque o normal é ser engano.
+- **Fica em modal próprio, não como seção do "Gerenciar compromisso"** — medido: a prévia de 12 parcelas somava 645px num modal que já tinha cinco seções, e o modal ia a 1400px numa janela de 900px, deixando o botão "Aplicar estorno" fora da tela. O modal próprio usa a classe `has-est`, a mesma cadeia flex do `has-ba`: título, campos e botões sempre visíveis e **uma** barra de rolagem, a da `.est-list`. A cadeia tem que descer por `.est-section` e `.est-preview` também, senão o encolhimento para nelas.
+- **Conferido contra os dados reais**: no modo `antecipar` o estorno do iPhone 17 Pro libera R$ 7.412,30 de limite (10 meses × 634,69 mais a fatura de dezembro inteira) e reproduz a fatura do Picpay linha por linha; no `uma-a-uma` libera os R$ 6.981,59 das 11 parcelas e cada mês fica líquido zero. Desfazer devolve estado, `endMonth` e limite ao valor original nos dois modos. Layout verificado em 1440x900, 375x812 e 320x560, nos dois temas: sem vazamento e sem quebra no meio de número.
+
 ## Pendências / ideias para o futuro (mencionadas ao usuário, não implementadas)
 
 - Otimizar performance para quando houver anos de dados acumulados (hoje tudo re-renderiza por completo a cada clique — funciona bem em escala pequena/média).
