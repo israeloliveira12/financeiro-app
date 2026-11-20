@@ -264,6 +264,7 @@ button.btn.danger:hover{background:var(--bad-hover);}
 .mes-section-toggle{display:none;}
 /* Prévia do estorno de parcelamento (modal de compromisso). */
 .est-preview{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;}
+.field-note{font-size:10.5px;color:var(--ink-soft);margin:4px 0 0;line-height:1.35;text-transform:none;letter-spacing:0;}
 .est-hint{font-size:11.5px;color:var(--ink-soft);margin:0 0 8px;line-height:1.45;}
 .est-hint strong{color:var(--ink);}
 .est-dif{color:var(--warn-ink);}

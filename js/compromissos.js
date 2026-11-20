@@ -252,7 +252,8 @@ function openEstornoModal(id){
             </select></div>
           </div>
           <div class="entry-form">
-            <div id="est-mes-wrap"><label for="est-mes">Fatura do crédito</label><input type="month" id="est-mes" value="${esc(todayKey())}" onchange="renderEstornoPreview('${esc(id)}')"></div>
+            <div id="est-mes-wrap"><label for="est-mes">Fatura do crédito</label><input type="month" id="est-mes" value="${esc(todayKey())}" onchange="renderEstornoPreview('${esc(id)}')">
+              <p class="field-note">O mês como você lança, não o do vencimento.</p></div>
             <div id="est-valor-wrap"><label for="est-valor">Valor creditado</label><input type="number" step="0.01" id="est-valor" placeholder="0,00" oninput="renderEstornoPreview('${esc(id)}')"></div>
           </div>
           <div class="est-preview" id="est-preview"></div>
